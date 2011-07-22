@@ -1,0 +1,49 @@
+# Services #
+############
+*.sassc
+.sass-cache
+
+# Generic #
+###########
+/log/*
+/tmp/*
+/pids/*
+
+# Rails #
+#########
+*.rbc
+capybara-*.html
+.rspec
+/.bundle
+/vendor/bundle
+/public/system/*
+/coverage/
+/spec/tmp/*
+**.orig
+rerun.txt
+
+# Edits/Editors #
+#################
+._*
+*~
+*BAK
+.project
+
+# OS generated files #
+######################
+.DS_Store?
+ehthumbs.db
+Icon?
+Thumbs.db
+.AppleDouble
+
+# Logs and databases #
+######################
+*.log
+*.sql
+*.sqlite
+*.rdb
+
+# Other Code Management #
+#########################
+.svn
