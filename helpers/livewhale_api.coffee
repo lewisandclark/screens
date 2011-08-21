@@ -3,7 +3,6 @@ events = require 'events'
 https = require 'https'
 
 env = require __dirname + '/../config/env'
-livewhale_event = require __dirname + '/../models/livewhale_event'
 
 class LiveWhaleAPI
 
@@ -12,7 +11,7 @@ class LiveWhaleAPI
 
   @['prototype'] = new events.EventEmitter
 
-  collect: (type='events', id, child=null) ->
+  collect: (type='events', id) ->
     if id is null or id <= 0
       object.error 'error', "id is not valid: #{id}", 'LiveWhaleAPI.collect'
     options =
@@ -25,13 +24,11 @@ class LiveWhaleAPI
         res.on 'data', (chunk) ->
           data += chunk
         res.on 'end', () ->
-          #try
+          try
             parsed = JSON.parse data
-            item = new livewhale_event parsed, child
-            item.save()
-            object.emit('success', item) if object['_events']? and object['_events']['success']?
-          #catch e
-            #object.error e, 'parse error', 'LiveWhaleAPI.collect.https'
+            object.emit('success', type, parsed) if object['_events']? and object['_events']['success']?
+          catch e
+            object.error e, 'parse error', 'LiveWhaleAPI.collect.https'
     req.on 'error',
       (e) ->
         object.error e, 'request error', 'LiveWhaleAPI.collect.https'

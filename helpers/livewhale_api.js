@@ -1,21 +1,17 @@
 (function() {
-  var LiveWhaleAPI, env, events, https, livewhale_event;
+  var LiveWhaleAPI, env, events, https;
   events = require('events');
   https = require('https');
   env = require(__dirname + '/../config/env');
-  livewhale_event = require(__dirname + '/../models/livewhale_event');
   LiveWhaleAPI = (function() {
     function LiveWhaleAPI() {
       this.error = require(__dirname + '/error');
     }
     LiveWhaleAPI['prototype'] = new events.EventEmitter;
-    LiveWhaleAPI.prototype.collect = function(type, id, child) {
+    LiveWhaleAPI.prototype.collect = function(type, id) {
       var object, options, req;
       if (type == null) {
         type = 'events';
-      }
-      if (child == null) {
-        child = null;
       }
       if (id === null || id <= 0) {
         object.error('error', "id is not valid: " + id, 'LiveWhaleAPI.collect');
@@ -32,12 +28,14 @@
           return data += chunk;
         });
         return res.on('end', function() {
-          var item, parsed;
-          parsed = JSON.parse(data);
-          item = new livewhale_event(parsed, child);
-          item.save();
-          if ((object['_events'] != null) && (object['_events']['success'] != null)) {
-            return object.emit('success', item);
+          var parsed;
+          try {
+            parsed = JSON.parse(data);
+            if ((object['_events'] != null) && (object['_events']['success'] != null)) {
+              return object.emit('success', type, parsed);
+            }
+          } catch (e) {
+            return object.error(e, 'parse error', 'LiveWhaleAPI.collect.https');
           }
         });
       });

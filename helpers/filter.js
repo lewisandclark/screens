@@ -1,14 +1,17 @@
 (function() {
-  var Filter, app, env, events, io, livewhale_event;
+  var Filter, app, env, events, io, natural, nounInflector;
   events = require('events');
   env = require(__dirname + '/../config/env');
   app = require(__dirname + '/../config/app');
   io = require('socket.io').listen(app);
-  livewhale_event = require(__dirname + '/../models/livewhale_event');
+  natural = require('natural');
+  nounInflector = new natural.NounInflector();
   Filter = (function() {
     function Filter() {
       this.error = require(__dirname + '/error');
+      this.db = require(__dirname + '/db');
       this.livewhale_api = require(__dirname + '/livewhale_api');
+      this.livewhale_event = require(__dirname + '/../models/livewhale_event');
     }
     Filter['prototype'] = new events.EventEmitter;
     Filter.prototype.process = function(update) {
@@ -18,25 +21,50 @@
       }
       object = this;
       if (update['is_deleted'] || update['is_removed']) {
-        livewhale_event["delete"](update['object_id']);
+        this.livewhale_event["delete"](update['object_id']);
+        return this.remove_from_screens(update['object'], update['object_id']);
       } else {
         livewhale_api = new this.livewhale_api;
-        livewhale_api.collect(update['object'], update['object_id']);
-        this.update({
-          something: 'test'
+        livewhale_api.on('success', function(type, parsed) {
+          var item;
+          item = new object["livewhale_" + (nounInflector.singularize(type))](parsed);
+          item.on('save_success', function(stored) {
+            object.push_to_screens(this);
+            return object.push_to_timeline(this);
+          });
+          return item.save();
         });
+        return livewhale_api.collect(update['object'], update['object_id']);
       }
-      return true;
     };
-    Filter.prototype.update = function(item) {
+    Filter.prototype.push_to_screens = function(item) {
       return io.sockets.emit('update', {
         item: item
       });
     };
-    Filter.prototype.remove = function(type, id) {
+    Filter.prototype.push_to_timeline = function(item) {
+      var channel, db, _i, _len, _ref, _results;
+      db = new this.db;
+      try {
+        _ref = item.channels();
+        _results = [];
+        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+          channel = _ref[_i];
+          _results.push(db.add_to_sorted_set("timeline:" + channel, item.timestamp(), item.key()));
+        }
+        return _results;
+      } catch (e) {
+        return this.error(e, "unable to push " + (item.key()) + " to timeline(s)", 'Filter.push_to_timeline');
+      }
+    };
+    Filter.prototype.remove_from_screens = function(type, id) {
       if (type == null) {
         type = 'events';
       }
+      return io.sockets.emit('removed', {
+        type: type,
+        id: id
+      });
     };
     return Filter;
   })();
