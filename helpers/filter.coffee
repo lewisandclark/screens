@@ -1,46 +1,46 @@
 
 events = require 'events'
-https = require 'https'
 
 env = require __dirname + '/../config/env'
+app = require __dirname + '/../config/app'
+io = require('socket.io').listen app
+livewhale_event = require __dirname + '/../models/livewhale_event'
 
 class Filter
 
   constructor: () ->
     @error = require __dirname + '/error'
-    @livewhale = require __dirname + '/livewhale'
-    @data = require __dirname + '/data'
+    @livewhale_api = require __dirname + '/livewhale_api'
 
   @['prototype'] = new events.EventEmitter
 
   process: (update={}) ->
     object = @
-    if update['is_deleted']
-      data = new @data
-      data.on 'success',
-        (type='events', id=0) ->
-          console.log "#{type} #{id} was deleted"
-      data.delete update['object'], update['object_id']
+    if update['is_deleted'] or update['is_removed']
+      livewhale_event.delete update['object_id']
     else
-      livewhale = new @livewhale_api
-      livewhale.on 'success',
-        (parsed) ->
-          data = new object.data
-          data.on 'success',
-            (stored_data) ->
-              console.log "SAVED"
-              console.log stored_data
-          data.save parsed
-      livewhale.collect update['object'], update['object_id']
+      livewhale_api = new @livewhale_api
+      livewhale_api.collect update['object'], update['object_id']
+      @update({ something: 'test' })
     true
 
-  # need to test location? Push should handle this
-  # need to pass status, scheduled and archive/expiration to handle live status
+  update: (item) ->
+    io.sockets.emit 'update', { item: item }
 
-  # need to apply channel filter (store in env)
+  remove: (type='events', id) ->
+    # app.io.sockets.emit 'removed', { type: type, id: id }
+
+  
+
+  # To Do:
+  # need to test location? Push should handle this (before/after checking = is_removed)
   # need to test for parent in same channel
-  # need to store key groups which predominate
 
-  # need to have live test in clients
+  # Improvements:
+  # make all LW api calls from within the model
+  # refactor db to be use a single function
+
+  # Edge Cases:
+  # subsequent update of a parent event (need to track children)
 
 module.exports = Filter

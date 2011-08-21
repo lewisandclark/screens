@@ -14,7 +14,7 @@
     if (caller != null) {
       console.log(caller);
     }
-    if (this['_events']['error'] != null) {
+    if ((this['_events'] != null) && (this['_events']['error'] != null)) {
       this.emit('error', error);
     }
     return true;

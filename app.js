@@ -6,7 +6,6 @@
   appSSL = require(__dirname + '/config/appSSL');
   helpers = {
     request: require(__dirname + '/helpers/request'),
-    qrcode: require(__dirname + '/helpers/qrcode'),
     filter: require(__dirname + '/helpers/filter')
   };
   app.get('/', function(req, res) {
@@ -27,12 +26,30 @@
       });
     }
   });
+  app.get('/test', function(req, res) {
+    return res.render('signage/index.jade', {
+      layout: 'layouts/signage.jade',
+      locals: {
+        title: 'Lewis & Clark Campus Display System',
+        digital_ts: '10029244356'
+      }
+    });
+  });
   app.listen(env.port);
   appSSL.get('/', function(req, res) {
     return res.render('static/promo.jade', {
       layout: 'layouts/simple.jade',
       locals: {
         title: 'Lewis & Clark'
+      }
+    });
+  });
+  appSSL.get('/test', function(req, res) {
+    return res.render('signage/index.jade', {
+      layout: 'layouts/signage.jade',
+      locals: {
+        title: 'Lewis & Clark Campus Display System',
+        digital_ts: '10029244356'
       }
     });
   });

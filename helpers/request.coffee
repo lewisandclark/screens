@@ -9,7 +9,7 @@ helper =
     false
   is_trusted: (request) ->
     return false if request.body is null
-    hmac = crypto.createHmac('sha1', env.livewhale_client_secret)
+    hmac = crypto.createHmac('sha1', env.livewhale.client_secret)
     hmac.update request.rawBody.substring(5) # remove leading body=
     providedSignature = request.headers['x-hub-signature']
     calculatedSignature = hmac.digest(encoding='hex')

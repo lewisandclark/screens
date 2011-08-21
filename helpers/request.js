@@ -14,7 +14,7 @@
       if (request.body === null) {
         return false;
       }
-      hmac = crypto.createHmac('sha1', env.livewhale_client_secret);
+      hmac = crypto.createHmac('sha1', env.livewhale.client_secret);
       hmac.update(request.rawBody.substring(5));
       providedSignature = request.headers['x-hub-signature'];
       calculatedSignature = hmac.digest(encoding = 'hex');

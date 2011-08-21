@@ -17,4 +17,5 @@ class DateWrapper
   parseDate: (date_string) ->
     new Date(@parse(date_string))
 
-module.exports = DateWrapper
+date_wrapper = new DateWrapper()
+module.exports = date_wrapper

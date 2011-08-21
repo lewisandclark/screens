@@ -16,15 +16,15 @@
         size = 800;
       }
       query = {
-        login: env.bitly_account,
-        apiKey: env.bitly_api_key,
+        login: env.bitly.account,
+        apiKey: env.bitly.api_key,
         longUrl: url,
         format: 'json',
         s: size
       };
       options = {
-        host: 'api.bitly.com',
-        path: '/v3/shorten?' + querystring.stringify(query)
+        host: env.bitly.host,
+        path: ("" + env.bitly.path + "?") + querystring.stringify(query)
       };
       object = this;
       req = http.get(options, function(res) {

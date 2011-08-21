@@ -1,46 +1,42 @@
 (function() {
-  var Filter, env, events, https;
+  var Filter, app, env, events, io, livewhale_event;
   events = require('events');
-  https = require('https');
   env = require(__dirname + '/../config/env');
+  app = require(__dirname + '/../config/app');
+  io = require('socket.io').listen(app);
+  livewhale_event = require(__dirname + '/../models/livewhale_event');
   Filter = (function() {
     function Filter() {
       this.error = require(__dirname + '/error');
-      this.livewhale = require(__dirname + '/livewhale');
-      this.data = require(__dirname + '/data');
+      this.livewhale_api = require(__dirname + '/livewhale_api');
     }
     Filter['prototype'] = new events.EventEmitter;
     Filter.prototype.process = function(update) {
-      var data, livewhale, object;
+      var livewhale_api, object;
       if (update == null) {
         update = {};
       }
       object = this;
-      if (update['is_deleted']) {
-        data = new this.data;
-        data.on('success', function(type, id) {
-          if (type == null) {
-            type = 'events';
-          }
-          if (id == null) {
-            id = 0;
-          }
-          return console.log("" + type + " " + id + " was deleted");
-        });
-        data["delete"](update['object'], update['object_id']);
+      if (update['is_deleted'] || update['is_removed']) {
+        livewhale_event["delete"](update['object_id']);
       } else {
-        livewhale = new this.livewhale_api;
-        livewhale.on('success', function(parsed) {
-          data = new object.data;
-          data.on('success', function(stored_data) {
-            console.log("SAVED");
-            return console.log(stored_data);
-          });
-          return data.save(parsed);
+        livewhale_api = new this.livewhale_api;
+        livewhale_api.collect(update['object'], update['object_id']);
+        this.update({
+          something: 'test'
         });
-        livewhale.collect(update['object'], update['object_id']);
       }
       return true;
+    };
+    Filter.prototype.update = function(item) {
+      return io.sockets.emit('update', {
+        item: item
+      });
+    };
+    Filter.prototype.remove = function(type, id) {
+      if (type == null) {
+        type = 'events';
+      }
     };
     return Filter;
   })();

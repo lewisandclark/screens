@@ -3,6 +3,7 @@ events = require 'events'
 https = require 'https'
 
 env = require __dirname + '/../config/env'
+livewhale_event = require __dirname + '/../models/livewhale_event'
 
 class LiveWhaleAPI
 
@@ -11,12 +12,12 @@ class LiveWhaleAPI
 
   @['prototype'] = new events.EventEmitter
 
-  collect: (type='events', id) ->
+  collect: (type='events', id, child=null) ->
     if id is null or id <= 0
       object.error 'error', "id is not valid: #{id}", 'LiveWhaleAPI.collect'
     options =
-      host: env.hosts.livewhale
-      path: "#{env.livewhale_api_path}/#{type}/#{id}.json"
+      host: env.livewhale.host
+      path: "#{env.livewhale.path}/#{type}/#{id}.json"
     object = @
     req = https.get options,
       (res) ->
@@ -24,24 +25,16 @@ class LiveWhaleAPI
         res.on 'data', (chunk) ->
           data += chunk
         res.on 'end', () ->
-          try
+          #try
             parsed = JSON.parse data
-            parsed['type'] = type
-            object.emit 'success', parsed
-          catch e
-            object.error e, 'parse error', 'LiveWhaleAPI.collect.https'
+            item = new livewhale_event parsed, child
+            item.save()
+            object.emit('success', item) if object['_events']? and object['_events']['success']?
+          #catch e
+            #object.error e, 'parse error', 'LiveWhaleAPI.collect.https'
     req.on 'error',
       (e) ->
         object.error e, 'request error', 'LiveWhaleAPI.collect.https'
     true
-
-  is_live: (update) ->
-    return true if update['status'] is 1
-    return true if update['type'] is 'news' and update['golive'] > new Date() and update['expiration'] > update['golive']
-    false
-
-  has_parent: (update) ->
-    return true if update['parent_id']?
-    false
 
 module.exports = LiveWhaleAPI

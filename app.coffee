@@ -4,19 +4,10 @@ url = require 'url'
 env = require __dirname + '/config/env'
 app = require __dirname + '/config/app'
 appSSL = require __dirname + '/config/appSSL'
+
 helpers =
   request: require __dirname + '/helpers/request'
-  qrcode: require __dirname + '/helpers/qrcode'
   filter: require __dirname + '/helpers/filter'
-
-# fs.statSync(path)
-
-# promo_qr_code = new helpers.qrcode()
-# promo_qr_code.on 'success',
-#   (url) ->
-#     console.log url
-#     true
-# promo_qr_code.generate()
 
 # App
 app.get '/',
@@ -26,6 +17,10 @@ app.get '/',
     else
       res.render 'static/promo.jade', { layout: 'layouts/simple.jade', locals: { title: 'Lewis & Clark' } }
 
+app.get '/test',
+  (req, res) ->
+    res.render 'signage/index.jade', { layout: 'layouts/signage.jade', locals: { title: 'Lewis & Clark Campus Display System', digital_ts: '10029244356' } }
+
 app.listen(env.port)
 
 
@@ -33,6 +28,10 @@ app.listen(env.port)
 appSSL.get '/',
   (req, res) ->
     res.render 'static/promo.jade', { layout: 'layouts/simple.jade', locals: { title: 'Lewis & Clark' } }
+
+appSSL.get '/test',
+  (req, res) ->
+    res.render 'signage/index.jade', { layout: 'layouts/signage.jade', locals: { title: 'Lewis & Clark Campus Display System', digital_ts: '10029244356' } }
 
 appSSL.get '/updates',
   (req, res) ->

@@ -1,5 +1,5 @@
 (function() {
-  var DateWrapper, events;
+  var DateWrapper, date_wrapper, events;
   events = require('events');
   DateWrapper = (function() {
     function DateWrapper() {
@@ -18,5 +18,6 @@
     };
     return DateWrapper;
   })();
-  module.exports = DateWrapper;
+  date_wrapper = new DateWrapper();
+  module.exports = date_wrapper;
 }).call(this);
