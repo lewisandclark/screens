@@ -1,13 +1,12 @@
 (function() {
-  var Filter, app, env, events, io, natural, nounInflector;
+  var Filter, env, events, natural, nounInflector;
   events = require('events');
   env = require(__dirname + '/../config/env');
-  app = require(__dirname + '/../config/app');
-  io = require('socket.io').listen(app);
   natural = require('natural');
   nounInflector = new natural.NounInflector();
   Filter = (function() {
-    function Filter() {
+    function Filter(io) {
+      this.io = io;
       this.error = require(__dirname + '/error');
       this.db = require(__dirname + '/db');
       this.livewhale_api = require(__dirname + '/livewhale_api');
@@ -38,7 +37,7 @@
       }
     };
     Filter.prototype.push_to_screens = function(item) {
-      return io.sockets.emit('update', {
+      return this.io.sockets.emit('update', {
         item: item
       });
     };
@@ -61,7 +60,7 @@
       if (type == null) {
         type = 'events';
       }
-      return io.sockets.emit('removed', {
+      return this.io.sockets.emit('removed', {
         type: type,
         id: id
       });

@@ -1,12 +1,14 @@
 (function() {
-  var app, appSSL, env, helpers, url;
+  var app, appSSL, env, helpers, io, url;
   url = require('url');
   env = require(__dirname + '/config/env');
   app = require(__dirname + '/config/app');
   appSSL = require(__dirname + '/config/appSSL');
+  io = require('socket.io').listen(app);
   helpers = {
     request: require(__dirname + '/helpers/request'),
-    filter: require(__dirname + '/helpers/filter')
+    filter: require(__dirname + '/helpers/filter'),
+    retrieve: require(__dirname + '/helpers/retrieve')
   };
   app.get('/', function(req, res) {
     if (helpers.request.is_screen(req)) {
@@ -36,6 +38,14 @@
     });
   });
   app.listen(env.port);
+  io.sockets.on('connection', function(socket) {
+    var retrieve;
+    retrieve = new helpers.retrieve(socket);
+    retrieve.channel();
+    return socket.on('items', function(data) {
+      return retrieve.items(data['count']);
+    });
+  });
   appSSL.get('/', function(req, res) {
     return res.render('static/promo.jade', {
       layout: 'layouts/simple.jade',
@@ -65,7 +75,7 @@
         updates = JSON.parse(req.body.body);
         for (_i = 0, _len = updates.length; _i < _len; _i++) {
           update = updates[_i];
-          filter = new helpers.filter;
+          filter = new helpers.filter(io);
           filter.process(update);
         }
         return res.send('OK');

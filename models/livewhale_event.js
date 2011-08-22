@@ -9,6 +9,15 @@
       this.error = require(__dirname + '/../helpers/error');
       this.db = require(__dirname + '/../helpers/db');
       this.type = 'events';
+      this.validations = {
+        id: "(typeof this.properties[property] === 'number' && parseInt(this.properties[property]) === this.properties[property] && this.properties[property] > 0)",
+        title: "(typeof this.properties[property] === 'string' && this.properties[property].length > 0)",
+        summary: "(typeof this.properties[property] === 'string' && this.properties[property].length > 0)",
+        group: "(typeof this.properties[property] === 'object' && typeof this.properties[property]['id'] === 'number' && parseInt(this.properties[property]['id']) === this.properties[property]['id'] && this.properties[property]['id'] > 0)",
+        link: "(typeof this.properties[property] === 'string' && this.properties[property].length > 0)",
+        start_time: "(Date.parse(this.properties[property]) > 0)",
+        places: "(typeof this.properties[property] === 'object' && this.properties[property].length > 0 && typeof this.properties[property][0]['id'] === 'number' && parseInt(this.properties[property][0]['id']) === this.properties[property][0]['id'] && this.properties[property][0]['id'] > 0)"
+      };
       this.properties = parsed_data;
     }
     LiveWhaleEvent['prototype'] = new events.EventEmitter;
@@ -21,6 +30,12 @@
     LiveWhaleEvent.prototype.timestamp = function() {
       return DateWrapper.parse(this.properties['start_time']);
     };
+    LiveWhaleEvent.prototype.date = function(timestamp) {
+      if (timestamp == null) {
+        timestamp = this.properties['start_time'];
+      }
+      return new Date(timestamp);
+    };
     LiveWhaleEvent.prototype.has_parent = function() {
       return this.properties['parent_id'] != null;
     };
@@ -30,8 +45,32 @@
     LiveWhaleEvent.prototype.is_authoritative = function() {
       return env.authoritative_sources.indexOf(this.properties['group']['id']) >= 0;
     };
-    LiveWhaleEvent.prototype.has_at_least_one_place = function() {
-      return (this.properties['places'] != null) && this.properties['places'].length > 0 && (this.properties['places'][0]['id'] != null);
+    LiveWhaleEvent.prototype.is_this_week = function() {
+      var now;
+      now = new Date();
+      return (this.timestamp() - now.getTime()) < 604800000;
+    };
+    LiveWhaleEvent.prototype.is_today = function() {
+      var now;
+      now = new Date();
+      return this.is_this_week() && this.date().getDay() === now.getDay();
+    };
+    LiveWhaleEvent.prototype.is_tomorrow = function() {
+      var now;
+      now = new Date();
+      return this.is_this_week() && ((this.date().getDay() - 1) === now.getDay() || (this.date().getDay() === 0 && now.getDay() === 6));
+    };
+    LiveWhaleEvent.prototype.day = function() {
+      if (this.is_today()) {
+        return 'Today';
+      }
+      if (this.is_tomorrow()) {
+        return 'Tomorrow';
+      }
+      if (this.is_this_week()) {
+        return days[this.date().getDay()];
+      }
+      return "" + monthsAbbreviated[this.date().getMonth()] + " " + (d.getDate());
     };
     LiveWhaleEvent.prototype.channels = function() {
       var channel, criteria, _ref, _results;
@@ -47,10 +86,21 @@
       return _results;
     };
     LiveWhaleEvent.prototype.valid = function() {
+      var property, test, _ref;
+      _ref = this.validations;
+      for (property in _ref) {
+        test = _ref[property];
+        if (!eval(test)) {
+          return false;
+        }
+      }
       return true;
     };
     LiveWhaleEvent.prototype.save = function() {
       var db, object;
+      if (!this.valid()) {
+        return this.error("validation failed", "unable to meet validation checks for " + this.properties, 'LiveWhaleEvent.save');
+      }
       object = this;
       db = new this.db;
       try {

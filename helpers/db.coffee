@@ -67,6 +67,18 @@ class Data
     catch e
       @error e, "could not delete #{type} #{id}", 'Data.del'
 
+  add_to_set: (key, value) ->
+    object = @
+    try
+      @client.sadd key, value,
+        (e, replies) ->
+          if e?
+            object.error e, "redis unable to add #{value} to set #{key}", 'Data.sadd.client'
+          else
+            object.emit('add_to_set_success', replies, key) if object['_events']? and object['_events']['add_to_set_success']?
+    catch e
+      @error e, "could not add #{value} to set #{key}", 'Data.sadd'
+
   add_to_sorted_set: (key, rank, value) ->
     object = @
     try
@@ -79,17 +91,41 @@ class Data
     catch e
       @error e, "could not add #{value} of #{rank} to sorted set #{key}", 'Data.zadd'
 
-  add_to_set: (key, value) ->
+  get_from_sorted_set: (key, min, max) ->
     object = @
     try
-      @client.sadd key, value,
+      @client.zrangebyscore key, min, max,
         (e, replies) ->
           if e?
-            object.error e, "redis unable to add #{value} to set #{key}", 'Data.sadd.client'
+            object.error e, "redis unable to get from sorted set #{key} starting from #{min}", 'Data.zrangebyscore.client'
           else
-            object.emit('add_to_set_success', replies, key) if object['_events']? and object['_events']['add_to_set_success']?
+            object.emit('get_from_sorted_set_success', replies, key) if object['_events']? and object['_events']['get_from_sorted_set_success']?
     catch e
-      @error e, "could not add #{value} to set #{key}", 'Data.sadd'
+      @error e, "could not get from sorted set #{key} starting from #{min}", 'Data.zrangebyscore'
+
+  get_index_of_sorted_set_item: (key, member) ->
+    object = @
+    try
+      @client.zrank key, member,
+        (e, replies) ->
+          if e?
+            object.error e, "redis unable to get from sorted set #{key} starting from #{min}", 'Data.zrank.client'
+          else
+            object.emit('get_index_of_sorted_set_item_success', replies, key) if object['_events']? and object['_events']['get_index_of_sorted_set_item_success']?
+    catch e
+      @error e, "could not get from sorted set #{key} starting from #{min}", 'Data.zrank'
+
+  get_from_sorted_set_by_index: (key, start, stop) ->
+    object = @
+    try
+      @client.zrange key, start, stop,
+        (e, replies) ->
+          if e?
+            object.error e, "redis unable to get from sorted set #{key} starting from #{start}", 'Data.zrange.client'
+          else
+            object.emit('get_from_sorted_set_by_index_success', replies, key) if object['_events']? and object['_events']['get_from_sorted_set_by_index_success']?
+    catch e
+      @error e, "could not get from sorted set #{key} starting from #start", 'Data.zrange'
 
   quit: () ->
     @client.quit()

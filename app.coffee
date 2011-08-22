@@ -4,10 +4,12 @@ url = require 'url'
 env = require __dirname + '/config/env'
 app = require __dirname + '/config/app'
 appSSL = require __dirname + '/config/appSSL'
+io = require('socket.io').listen app
 
 helpers =
   request: require __dirname + '/helpers/request'
   filter: require __dirname + '/helpers/filter'
+  retrieve: require __dirname + '/helpers/retrieve'
 
 # App
 app.get '/',
@@ -22,6 +24,14 @@ app.get '/test',
     res.render 'signage/index.jade', { layout: 'layouts/signage.jade', locals: { title: 'Lewis & Clark Campus Display System', digital_ts: '10029244356' } }
 
 app.listen(env.port)
+
+io.sockets.on 'connection',
+  (socket) ->
+    retrieve = new helpers.retrieve(socket)
+    retrieve.channel()
+    socket.on 'items',
+      (data) ->
+        retrieve.items(data['count'])
 
 
 # SSL App
@@ -44,7 +54,7 @@ appSSL.post '/updates',
       try
         updates = JSON.parse(req.body.body)
         for update in updates
-          filter = new helpers.filter
+          filter = new helpers.filter(io)
           filter.process(update)
         res.send('OK')
       catch e

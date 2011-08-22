@@ -4,6 +4,8 @@
   DateWrapper = (function() {
     function DateWrapper() {
       this.error = require(__dirname + '/error');
+      this.days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      this.monthsAbbreviated = ['Jan.', 'Feb.', 'Mar.', 'Apr.', 'May', 'June', 'July', 'Aug.', 'Sept.', 'Oct.', 'Nov.', 'Dec.'];
     }
     DateWrapper['prototype'] = new events.EventEmitter;
     DateWrapper.prototype.parse = function(date_string) {

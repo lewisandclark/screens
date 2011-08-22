@@ -5,6 +5,29 @@ class DateWrapper
 
   constructor: () ->
     @error = require __dirname + '/error'
+    @days = [
+      'Sunday'
+      'Monday'
+      'Tuesday'
+      'Wednesday'
+      'Thursday'
+      'Friday'
+      'Saturday'
+    ]
+    @monthsAbbreviated = [
+      'Jan.'
+      'Feb.'
+      'Mar.'
+      'Apr.'
+      'May'
+      'June'
+      'July'
+      'Aug.'
+      'Sept.'
+      'Oct.'
+      'Nov.'
+      'Dec.'
+    ]
 
   @['prototype'] = new events.EventEmitter
 
