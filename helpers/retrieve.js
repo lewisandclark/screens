@@ -1,18 +1,17 @@
 (function() {
-  var Retrieve, env, events, natural, nounInflector;
+  var Retrieve, env, events;
   events = require('events');
   env = require(__dirname + '/../config/env');
-  natural = require('natural');
-  nounInflector = new natural.NounInflector();
   Retrieve = (function() {
     function Retrieve(socket) {
+      var db;
       this.socket = socket;
       this.error = require(__dirname + '/error');
-      this.db = require(__dirname + '/db');
-      this.livewhale_event = require(__dirname + '/../models/livewhale_event');
+      db = require(__dirname + '/db');
+      this.db = new db;
     }
     Retrieve['prototype'] = new events.EventEmitter;
-    Retrieve.prototype.channel = function() {
+    Retrieve.prototype.set_channel = function() {
       var channel, object;
       channel = 'undergraduate';
       object = this;
@@ -22,37 +21,80 @@
         });
       });
     };
-    Retrieve.prototype.items = function(count) {
-      var db, object;
+    Retrieve.prototype.get_channel = function(count) {
+      var object;
       object = this;
-      db = new this.db;
-      try {
-        return this.socket.get('channel', function(e, channel) {
-          var d;
-          if (e != null) {
-            return object.error(e, "unable to retrieve channel for socket", 'Retrieve.retrieve_items.socket');
-          } else {
-            d = new Date();
-            d = d.getTime();
-            db.on('get_from_sorted_set_success', function(items, key) {
-              if ((items != null) && items.length > 0) {
-                db.on('get_index_of_sorted_set_item_success', function(index, key) {
-                  db.on('get_from_sorted_set_by_index_success', function(items, key) {
-                    return object.socket.emit('items', {
-                      items: items
-                    });
-                  });
-                  return db.get_from_sorted_set_by_index("timeline:" + channel, index, index + count);
-                });
-                return db.get_index_of_sorted_set_item("timeline:" + channel, items[0]);
-              }
-            });
-            return db.get_from_sorted_set("timeline:" + channel, d, "+inf");
-          }
+      return this.socket.get('channel', function(e, channel) {
+        if (e != null) {
+          object.error(e, "unable to retrieve channel for socket", 'Retrieve.retrieve_items.socket');
+          return object.socket.emit('error', {
+            error: "could not get channel from socket",
+            method: "Retrieve.get_channel"
+          });
+        } else {
+          return object.get_lead_member(channel, count);
+        }
+      });
+    };
+    Retrieve.prototype.get_lead_member = function(channel, count) {
+      var object;
+      object = this;
+      this.db.on('get_from_sorted_set_success', function(members, key) {
+        if ((members != null) && members.length > 0) {
+          return object.get_starting_index(channel, members, count);
+        } else {
+          return object.socket.emit('empty', {
+            channel: channel
+          });
+        }
+      });
+      return this.db.get_from_sorted_set("timeline:" + channel, (new Date()).getTime(), "+inf");
+    };
+    Retrieve.prototype.get_starting_index = function(channel, members, count) {
+      var object;
+      object = this;
+      this.db.on('get_index_of_sorted_set_item_success', function(index, key) {
+        if ((index != null) && index >= 0) {
+          return object.get_items(channel, index, count);
+        } else {
+          return object.socket.emit('error', {
+            error: "could not get index for lead member",
+            method: "Retrieve.get_items"
+          });
+        }
+      });
+      return this.db.get_index_of_sorted_set_item("timeline:" + channel, members[0]);
+    };
+    Retrieve.prototype.get_items = function(channel, index, count) {
+      var object;
+      object = this;
+      this.db.on('get_from_sorted_set_by_index_success', function(members, key) {
+        if ((members != null) && members.length > 0) {
+          return object.push(members);
+        } else {
+          return object.socket.emit('error', {
+            error: "could not get index ",
+            method: "Retrieve.get_items"
+          });
+        }
+      });
+      return this.db.get_from_sorted_set_by_index("timeline:" + channel, index, index + count);
+    };
+    Retrieve.prototype.push = function(members) {
+      var member, object, _i, _len, _results;
+      object = this;
+      this.db.on('get_success', function(item, key) {
+        return object.socket.volatile.emit('update', {
+          key: key,
+          item: item
         });
-      } catch (e) {
-        return this.error(e, "could not retrieve items", 'Retrieve.retrieve_items');
+      });
+      _results = [];
+      for (_i = 0, _len = members.length; _i < _len; _i++) {
+        member = members[_i];
+        _results.push(this.db.get(member));
       }
+      return _results;
     };
     return Retrieve;
   })();

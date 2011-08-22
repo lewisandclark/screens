@@ -43,24 +43,6 @@ class LiveWhaleEvent
   is_authoritative: () ->
     (env.authoritative_sources.indexOf(@properties['group']['id']) >= 0)
 
-  is_this_week: () ->
-    now = new Date()
-    return ((@timestamp() - now.getTime()) < 604800000)
-
-  is_today: () ->
-    now = new Date()
-    return (@is_this_week() and @date().getDay() is now.getDay())
-
-  is_tomorrow: () ->
-    now = new Date()
-    return (@is_this_week() and ((@date().getDay() - 1) is now.getDay() or (@date().getDay() is 0 and now.getDay() is 6)))
-
-  day: () ->
-    return 'Today' if @is_today()
-    return 'Tomorrow' if @is_tomorrow()
-    return days[@date().getDay()] if @is_this_week()
-    return "#{monthsAbbreviated[@date().getMonth()]} #{d.getDate()}"
-
   channels: () ->
     return [] if @properties['group'] is null
     for channel, criteria of env.channels

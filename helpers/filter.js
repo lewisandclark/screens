@@ -37,8 +37,9 @@
       }
     };
     Filter.prototype.push_to_screens = function(item) {
-      return this.io.sockets.emit('update', {
-        item: item
+      return this.io.sockets.volatile.emit('update', {
+        key: item.key(),
+        item: JSON.stringify(item['properties'])
       });
     };
     Filter.prototype.push_to_timeline = function(item) {

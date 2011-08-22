@@ -7,6 +7,9 @@ helper =
   is_screen: (request) ->
     return true if request.connection.remoteAddress? and env.screen_ips.indexOf(request.connection.remoteAddress) >= 0
     false
+  is_test_screen: (request) ->
+    return true if request.connection.remoteAddress? and (env.screens['office']['ip'] is request.connection.remoteAddress or env.screens['laptop']['ip'] is request.connection.remoteAddress)
+    false
   is_trusted: (request) ->
     return false if request.body is null
     hmac = crypto.createHmac('sha1', env.livewhale.client_secret)

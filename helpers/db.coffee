@@ -37,7 +37,7 @@ class Data
           if e?
             object.error e, "redis unable to get #{key}", 'Data.get.client'
           else
-            object.emit('get_success', replies) if object['_events']? and object['_events']['get_success']?
+            object.emit('get_success', replies, key) if object['_events']? and object['_events']['get_success']?
     catch e
       @error e, "could not get #{type} #{id}", 'Data.get'
 

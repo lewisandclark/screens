@@ -11,7 +11,7 @@
     retrieve: require(__dirname + '/helpers/retrieve')
   };
   app.get('/', function(req, res) {
-    if (helpers.request.is_screen(req)) {
+    if ((helpers.request.is_screen(req) && env.system_is_live) || helpers.request.is_test_screen(req)) {
       return res.render('signage/index.jade', {
         layout: 'layouts/signage.jade',
         locals: {
@@ -41,9 +41,9 @@
   io.sockets.on('connection', function(socket) {
     var retrieve;
     retrieve = new helpers.retrieve(socket);
-    retrieve.channel();
+    retrieve.set_channel();
     return socket.on('items', function(data) {
-      return retrieve.items(data['count']);
+      return retrieve.get_channel(data['count']);
     });
   });
   appSSL.get('/', function(req, res) {

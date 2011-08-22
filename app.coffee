@@ -14,7 +14,7 @@ helpers =
 # App
 app.get '/',
   (req, res) ->
-    if helpers.request.is_screen(req)
+    if (helpers.request.is_screen(req) and env.system_is_live) or helpers.request.is_test_screen(req)
       res.render 'signage/index.jade', { layout: 'layouts/signage.jade', locals: { title: 'Lewis & Clark Campus Display System', digital_ts: '10029244356' } }
     else
       res.render 'static/promo.jade', { layout: 'layouts/simple.jade', locals: { title: 'Lewis & Clark' } }
@@ -28,10 +28,10 @@ app.listen(env.port)
 io.sockets.on 'connection',
   (socket) ->
     retrieve = new helpers.retrieve(socket)
-    retrieve.channel()
+    retrieve.set_channel()
     socket.on 'items',
       (data) ->
-        retrieve.items(data['count'])
+        retrieve.get_channel(data['count'])
 
 
 # SSL App

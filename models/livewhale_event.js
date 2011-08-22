@@ -45,33 +45,6 @@
     LiveWhaleEvent.prototype.is_authoritative = function() {
       return env.authoritative_sources.indexOf(this.properties['group']['id']) >= 0;
     };
-    LiveWhaleEvent.prototype.is_this_week = function() {
-      var now;
-      now = new Date();
-      return (this.timestamp() - now.getTime()) < 604800000;
-    };
-    LiveWhaleEvent.prototype.is_today = function() {
-      var now;
-      now = new Date();
-      return this.is_this_week() && this.date().getDay() === now.getDay();
-    };
-    LiveWhaleEvent.prototype.is_tomorrow = function() {
-      var now;
-      now = new Date();
-      return this.is_this_week() && ((this.date().getDay() - 1) === now.getDay() || (this.date().getDay() === 0 && now.getDay() === 6));
-    };
-    LiveWhaleEvent.prototype.day = function() {
-      if (this.is_today()) {
-        return 'Today';
-      }
-      if (this.is_tomorrow()) {
-        return 'Tomorrow';
-      }
-      if (this.is_this_week()) {
-        return days[this.date().getDay()];
-      }
-      return "" + monthsAbbreviated[this.date().getMonth()] + " " + (d.getDate());
-    };
     LiveWhaleEvent.prototype.channels = function() {
       var channel, criteria, _ref, _results;
       if (this.properties['group'] === null) {

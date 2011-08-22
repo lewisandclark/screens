@@ -48,7 +48,7 @@
             return object.error(e, "redis unable to get " + key, 'Data.get.client');
           } else {
             if ((object['_events'] != null) && (object['_events']['get_success'] != null)) {
-              return object.emit('get_success', replies);
+              return object.emit('get_success', replies, key);
             }
           }
         });

@@ -7,6 +7,12 @@ html
     link(rel='stylesheet', href='https://www.lclark.edu/site/scss/stylesheets/on.lclark.edu.css', media='screen', type='text/css')
     !{'<!--[if lt IE 9]><script src="https://html5shim.googlecode.com/svn/trunk/html5.js"></script><![endif]-->'}
   body!= body
+    section#guide(style='display:none;')
+      h1= title
+      p Learn more about this system including how you can get your events on these displays.
+      p
+        a(href='http://on.lclark.edu', title='self')
+          !{'http://on.lclark.edu'}
     footer
       p
         #{digital_ts}
