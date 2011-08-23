@@ -8,7 +8,8 @@
   helpers = {
     request: require(__dirname + '/helpers/request'),
     filter: require(__dirname + '/helpers/filter'),
-    retrieve: require(__dirname + '/helpers/retrieve')
+    retrieve: require(__dirname + '/helpers/retrieve'),
+    dashboard: require(__dirname + '/helpers/dashboard')
   };
   app.get('/', function(req, res) {
     if ((helpers.request.is_screen(req) && env.system_is_live) || helpers.request.is_test_screen(req)) {
@@ -39,11 +40,14 @@
   });
   app.listen(env.port);
   io.sockets.on('connection', function(socket) {
-    var retrieve;
+    var dashboard, retrieve;
     retrieve = new helpers.retrieve(socket);
-    retrieve.set_channel();
-    return socket.on('items', function(data) {
-      return retrieve.get_channel(data['count']);
+    dashboard = new helpers.dashboard();
+    socket.on('items', function(data) {
+      return retrieve.get_lead_member(data['count']);
+    });
+    return socket.on('impression', function(data) {
+      return dashboard.capture(data);
     });
   });
   appSSL.get('/', function(req, res) {

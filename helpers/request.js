@@ -10,7 +10,7 @@
       return false;
     },
     is_test_screen: function(request) {
-      if ((request.connection.remoteAddress != null) && (env.screens['office']['ip'] === request.connection.remoteAddress || env.screens['laptop']['ip'] === request.connection.remoteAddress)) {
+      if ((request.connection.remoteAddress != null) && (env.screens['office']['ip'] === request.connection.remoteAddress || env.screens['laptop']['ip'] === request.connection.remoteAddress || env.screens['home']['ip'] === request.connection.remoteAddress)) {
         return true;
       }
       return false;

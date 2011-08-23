@@ -67,6 +67,18 @@ class Data
     catch e
       @error e, "could not delete #{type} #{id}", 'Data.del'
 
+  append_to_list: (key, value) ->
+    object = @
+    try
+      @client.rpush key, value,
+        (e, replies) ->
+          if e?
+            object.error e, "redis unable to append #{value} to set #{key}", 'Data.rpush.client'
+          else
+            object.emit('append_to_list_success', replies, key) if object['_events']? and object['_events']['append_to_list_success']?
+    catch e
+      @error e, "could not append #{value} to set #{key}", 'Data.rpush'
+
   add_to_set: (key, value) ->
     object = @
     try

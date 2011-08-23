@@ -45,8 +45,10 @@ class LiveWhaleEvent
 
   channels: () ->
     return [] if @properties['group'] is null
+    channels = []
     for channel, criteria of env.channels
-      channel if criteria.schools.indexOf(@properties['group']['school']) >= 0 or criteria.group_ids.indexOf(@properties['group']['id']) >= 0
+      channels[channels.length] = channel if criteria.schools.indexOf(@properties['group']['school']) >= 0 or criteria.group_ids.indexOf(@properties['group']['id']) >= 0
+    channels
 
   valid: () ->
     for property, test of @validations

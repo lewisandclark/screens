@@ -10,18 +10,16 @@ $(document).ready ->
     views: views
     controller: controller
 
-  socket.on 'channel',
+  socket.on 'screen',
     (data) ->
-      document.signage.controller.set_channel(data['channel'])
+      document.signage.controller.set_screen(data)
 
   socket.on 'update',
     (data) ->
-      console.log data
       document.signage.controller.update(data)
 
   socket.on 'remove',
     (data) ->
-      alert "item received"
       document.signage.controller.remove(data['item'])
 
   socket.on 'empty',
@@ -47,7 +45,6 @@ class Controller
     @queue = []
     @buffer_size = 30
     @screen = ''
-    @channel = ''
     @position = 0
     @interval = null
     @seconds = 5
@@ -56,8 +53,8 @@ class Controller
     return true if @interval?
     false
 
-  set_channel: (channel) ->
-    @channel = channel
+  set_screen: (screen) ->
+    @screen = screen
     @buffer()
   
   has: (key) ->
@@ -82,8 +79,6 @@ class Controller
       success: (data, textStatus, jqXHR) ->
         if data? and data.data? and data.data.url?
           index = object.has(key)
-          console.log object.queue[index]['item']
-          console.log data.data.url
           object.queue[index]['item']['qrcode'] = data.data.url if index?
       error: (jqXHR, textStatus, errorThrown) ->
         null
@@ -93,20 +88,29 @@ class Controller
     return true if item['status'] is 1
     false
 
+  insert_index: (data) ->
+    return 0 if @queue.length is 0
+    for queued, index in @queue
+      return index if data['item']['start_time'].getTime() < queued['item']['start_time'].getTime()
+    return @queue.length if @queue.length < @buffer_size
+    null
+
   update: (data) ->
-    #try
+    try
       data['item'] = JSON.parse data['item']
       data['item'] = @datify(data['item'])
       exists = @has(data['key'])
-      console.log data
       if exists?
         @queue[exists] = data
-      else
-        @queue.push data if @is_live(data['item']) # insert by time; do filtering here, drop if over 30
+      else if @is_live(data['item'])
+        index = @insert_index(data)
+        if index?
+          @queue.splice index, 0, data
+          @position += 1 if @position > index
       @qrcodify(data['key'], data['item']['link'])
       @begin() if !@running()
-    #catch e
-      #console.log e
+    catch e
+      console.log e
 
   remove: (key) ->
     index = @has(key)
@@ -134,12 +138,9 @@ class Controller
       @render()
 
   reset: () ->
-    # show help, clear behind, reset section
     $("#guide").fadeIn(750)
     $("#announcements").html('').css('left', 0)
     @position = -1
-    # @end()
-    # @render()
 
   render: () ->
     @views.render(@position, @queue[@position])
@@ -224,7 +225,6 @@ class Views
       @format_time(item['start_time'])
 
   render: (position, data) ->
-    console.log "count: #{position}"
     key = data['key'].replace(/:/, '_')
     item = data['item']
     output = '
@@ -267,14 +267,13 @@ class Views
 
 TO DO - Short Term
 
-1) insert 'update's into local queue by timestamp, or exclude if full
+1) Write static content
 
-2) fix timeline push for college only (timeline:undefined)
+2) Make dashboard
 
-3) select channel, add screen data to channel push
+3) Hand push content to on.lclark.edu
 
-4) write listener to store impressions
-
+4) Add remove when event is switched to hidden
 
 TO DO - Long Term
 

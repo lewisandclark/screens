@@ -10,6 +10,7 @@ helpers =
   request: require __dirname + '/helpers/request'
   filter: require __dirname + '/helpers/filter'
   retrieve: require __dirname + '/helpers/retrieve'
+  dashboard: require __dirname + '/helpers/dashboard'
 
 # App
 app.get '/',
@@ -28,10 +29,13 @@ app.listen(env.port)
 io.sockets.on 'connection',
   (socket) ->
     retrieve = new helpers.retrieve(socket)
-    retrieve.set_channel()
+    dashboard = new helpers.dashboard()
     socket.on 'items',
       (data) ->
-        retrieve.get_channel(data['count'])
+        retrieve.get_lead_member(data['count'])
+    socket.on 'impression',
+      (data) ->
+        dashboard.capture(data)
 
 
 # SSL App

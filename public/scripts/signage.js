@@ -10,15 +10,13 @@
       views: views,
       controller: controller
     };
-    socket.on('channel', function(data) {
-      return document.signage.controller.set_channel(data['channel']);
+    socket.on('screen', function(data) {
+      return document.signage.controller.set_screen(data);
     });
     socket.on('update', function(data) {
-      console.log(data);
       return document.signage.controller.update(data);
     });
     socket.on('remove', function(data) {
-      alert("item received");
       return document.signage.controller.remove(data['item']);
     });
     socket.on('empty', function(data) {
@@ -40,7 +38,6 @@
       this.queue = [];
       this.buffer_size = 30;
       this.screen = '';
-      this.channel = '';
       this.position = 0;
       this.interval = null;
       this.seconds = 5;
@@ -51,8 +48,8 @@
       }
       return false;
     };
-    Controller.prototype.set_channel = function(channel) {
-      this.channel = channel;
+    Controller.prototype.set_screen = function(screen) {
+      this.screen = screen;
       return this.buffer();
     };
     Controller.prototype.has = function(key) {
@@ -90,8 +87,6 @@
           var index;
           if ((data != null) && (data.data != null) && (data.data.url != null)) {
             index = object.has(key);
-            console.log(object.queue[index]['item']);
-            console.log(data.data.url);
             if (index != null) {
               return object.queue[index]['item']['qrcode'] = data.data.url;
             }
@@ -108,22 +103,46 @@
       }
       return false;
     };
-    Controller.prototype.update = function(data) {
-      var exists;
-      data['item'] = JSON.parse(data['item']);
-      data['item'] = this.datify(data['item']);
-      exists = this.has(data['key']);
-      console.log(data);
-      if (exists != null) {
-        this.queue[exists] = data;
-      } else {
-        if (this.is_live(data['item'])) {
-          this.queue.push(data);
+    Controller.prototype.insert_index = function(data) {
+      var index, queued, _len, _ref;
+      if (this.queue.length === 0) {
+        return 0;
+      }
+      _ref = this.queue;
+      for (index = 0, _len = _ref.length; index < _len; index++) {
+        queued = _ref[index];
+        if (data['item']['start_time'].getTime() < queued['item']['start_time'].getTime()) {
+          return index;
         }
       }
-      this.qrcodify(data['key'], data['item']['link']);
-      if (!this.running()) {
-        return this.begin();
+      if (this.queue.length < this.buffer_size) {
+        return this.queue.length;
+      }
+      return null;
+    };
+    Controller.prototype.update = function(data) {
+      var exists, index;
+      try {
+        data['item'] = JSON.parse(data['item']);
+        data['item'] = this.datify(data['item']);
+        exists = this.has(data['key']);
+        if (exists != null) {
+          this.queue[exists] = data;
+        } else if (this.is_live(data['item'])) {
+          index = this.insert_index(data);
+          if (index != null) {
+            this.queue.splice(index, 0, data);
+            if (this.position > index) {
+              this.position += 1;
+            }
+          }
+        }
+        this.qrcodify(data['key'], data['item']['link']);
+        if (!this.running()) {
+          return this.begin();
+        }
+      } catch (e) {
+        return console.log(e);
       }
     };
     Controller.prototype.remove = function(key) {
@@ -259,7 +278,6 @@
     };
     Views.prototype.render = function(position, data) {
       var item, key, output;
-      console.log("count: " + position);
       key = data['key'].replace(/:/, '_');
       item = data['item'];
       output = '\
@@ -303,14 +321,13 @@
   
   TO DO - Short Term
   
-  1) insert 'update's into local queue by timestamp, or exclude if full
+  1) Write static content
   
-  2) fix timeline push for college only (timeline:undefined)
+  2) Make dashboard
   
-  3) select channel, add screen data to channel push
+  3) Hand push content to on.lclark.edu
   
-  4) write listener to store impressions
-  
+  4) Add remove when event is switched to hidden
   
   TO DO - Long Term
   

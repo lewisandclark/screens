@@ -6,51 +6,43 @@ env = require __dirname + '/../config/env'
 class Retrieve
 
   constructor: (socket) ->
-    @socket = socket
     @error = require __dirname + '/error'
     db = require __dirname + '/db'
     @db = new db
+    @socket = socket
+    @screen = @set_screen()
+    @socket.emit('screen', @screen) if @screen? 
 
   @['prototype'] = new events.EventEmitter
 
-  set_channel: () ->
-    channel = 'undergraduate'
-    object = @
-    @socket.set 'channel', channel,
-      () ->
-        object.socket.emit 'channel', { channel: channel }
+  set_screen: () ->
+    address = @socket.handshake.address.address
+    return null if address is null
+    for name, screen of env.screens
+      return screen if screen['ip'] is address
+    null
 
-  get_channel: (count) ->
-    object = @
-    @socket.get 'channel',
-      (e, channel) ->
-        if e?
-          object.error e, "unable to retrieve channel for socket", 'Retrieve.retrieve_items.socket'
-          object.socket.emit 'error', { error: "could not get channel from socket", method: "Retrieve.get_channel" }
-        else
-          object.get_lead_member channel, count
-
-  get_lead_member: (channel, count) ->
+  get_lead_member: (count) ->
     object = @
     @db.on 'get_from_sorted_set_success',
       (members, key) ->
         if members? and members.length > 0
-          object.get_starting_index channel, members, count
+          object.get_starting_index members, count
         else
-          object.socket.emit 'empty', { channel: channel }
-    @db.get_from_sorted_set("timeline:#{channel}", (new Date()).getTime(), "+inf")
+          object.socket.emit 'empty', { channel: object.screen['channel'] }
+    @db.get_from_sorted_set("timeline:#{@screen['channel']}", (new Date()).getTime(), "+inf")
     
-  get_starting_index: (channel, members, count) ->
+  get_starting_index: (members, count) ->
     object = @
     @db.on 'get_index_of_sorted_set_item_success',
       (index, key) ->
         if index? and index >= 0
-          object.get_items channel, index, count
+          object.get_items index, count
         else
           object.socket.emit 'error', { error: "could not get index for lead member", method: "Retrieve.get_items" }
-    @db.get_index_of_sorted_set_item("timeline:#{channel}", members[0])
+    @db.get_index_of_sorted_set_item("timeline:#{@screen['channel']}", members[0])
 
-  get_items: (channel, index, count) ->
+  get_items: (index, count) ->
     object = @
     @db.on 'get_from_sorted_set_by_index_success',
       (members, key) ->
@@ -58,7 +50,7 @@ class Retrieve
           object.push members
         else
           object.socket.emit 'error', { error: "could not get index ", method: "Retrieve.get_items" }
-    @db.get_from_sorted_set_by_index("timeline:#{channel}", index, (index + count))
+    @db.get_from_sorted_set_by_index("timeline:#{@screen['channel']}", index, (index + count))
   
   push: (members) ->
     object = @

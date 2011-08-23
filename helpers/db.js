@@ -95,6 +95,23 @@
         return this.error(e, "could not delete " + type + " " + id, 'Data.del');
       }
     };
+    Data.prototype.append_to_list = function(key, value) {
+      var object;
+      object = this;
+      try {
+        return this.client.rpush(key, value, function(e, replies) {
+          if (e != null) {
+            return object.error(e, "redis unable to append " + value + " to set " + key, 'Data.rpush.client');
+          } else {
+            if ((object['_events'] != null) && (object['_events']['append_to_list_success'] != null)) {
+              return object.emit('append_to_list_success', replies, key);
+            }
+          }
+        });
+      } catch (e) {
+        return this.error(e, "could not append " + value + " to set " + key, 'Data.rpush');
+      }
+    };
     Data.prototype.add_to_set = function(key, value) {
       var object;
       object = this;

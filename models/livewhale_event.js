@@ -46,17 +46,19 @@
       return env.authoritative_sources.indexOf(this.properties['group']['id']) >= 0;
     };
     LiveWhaleEvent.prototype.channels = function() {
-      var channel, criteria, _ref, _results;
+      var channel, channels, criteria, _ref;
       if (this.properties['group'] === null) {
         return [];
       }
+      channels = [];
       _ref = env.channels;
-      _results = [];
       for (channel in _ref) {
         criteria = _ref[channel];
-        _results.push(criteria.schools.indexOf(this.properties['group']['school']) >= 0 || criteria.group_ids.indexOf(this.properties['group']['id']) >= 0 ? channel : void 0);
+        if (criteria.schools.indexOf(this.properties['group']['school']) >= 0 || criteria.group_ids.indexOf(this.properties['group']['id']) >= 0) {
+          channels[channels.length] = channel;
+        }
       }
-      return _results;
+      return channels;
     };
     LiveWhaleEvent.prototype.valid = function() {
       var property, test, _ref;
