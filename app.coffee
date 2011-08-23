@@ -18,7 +18,7 @@ app.get '/',
     if (helpers.request.is_screen(req) and env.system_is_live) or helpers.request.is_test_screen(req)
       res.render 'signage/index.jade', { layout: 'layouts/signage.jade', locals: { title: 'Lewis & Clark Campus Display System', digital_ts: '10029244356' } }
     else
-      res.render 'static/promo.jade', { layout: 'layouts/simple.jade', locals: { title: 'Lewis & Clark' } }
+      res.render 'static/promo.jade', { layout: 'layouts/simple.jade', locals: { title: 'Lewis & Clark Campus Display System', buffer_size: env.buffer_size } }
 
 app.get '/test',
   (req, res) ->

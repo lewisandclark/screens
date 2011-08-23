@@ -20,7 +20,7 @@ $(document).ready ->
 
   socket.on 'remove',
     (data) ->
-      document.signage.controller.remove(data['item'])
+      document.signage.controller.remove(data['key'])
 
   socket.on 'empty',
     (data) ->
@@ -116,7 +116,6 @@ class Controller
     index = @has(key)
     if index?
       @queue.splice index, 1
-      @position -= 1 if @position >= index
       @buffer()
 
   buffer: () ->
@@ -141,6 +140,24 @@ class Controller
     $("#guide").fadeIn(750)
     $("#announcements").html('').css('left', 0)
     @position = -1
+    removals = for queued, index in @queue
+      if @is_past(queued['item']) then index else null
+    for index in removals
+      @queue.splice index, 1 if index?
+
+  is_all_day: (item) ->
+    return false if item['start_time'].getHours() isnt 0 or item['start_time'].getMinutes() isnt 0
+    return true if item['end_time'] is null
+    return false if item['end_time'].getHours() isnt 0 or item['end_time'].getMinutes() isnt 0
+    true
+
+  is_past: (item) ->
+    d = new Date()
+    return false if item['start_time'].getTime() > d.getTime()
+    return true if @is_all_day(item) and d.getHours() > 20 # past eight p.m. if all day
+    return true if item['end_time']? and d.getTime() > (item['start_time'].getTime() + (item['end_time'].getTime() - item['start_time'].getTime())/4) # past 25% of allotted time if end time
+    return true if d.getTime() > (item['start_time'].getTime() + 900000) # past fifteen minutes after the event start time
+    false
 
   render: () ->
     @views.render(@position, @queue[@position])
@@ -208,12 +225,22 @@ class Views
     "#{@months[d.getMonth()]} #{d.getDate()}"
 
   format_time: (d, meridian=true) ->
-    return "#{(d.getHours() - 12)}:#{@pad(d.getMinutes())}#{(' p.m.' if meridian)}" if d.getHours() > 12
-    "#{d.getHours()}:#{@pad(d.getMinutes())}#{(' a.m.' if meridian)}"
+    return "Midnight" if @is_midnight(d)
+    return "Noon" if @is_noon(d)
+    return "#{(d.getHours() - 12)}:#{@pad(d.getMinutes())}#{(if meridian then ' p.m.' else '')}" if d.getHours() > 12
+    "#{d.getHours()}:#{@pad(d.getMinutes())}#{(if meridian then ' a.m.' else '')}"
+
+  is_midnight: (d) ->
+    (d.getHours() is 0 and d.getMinutes() is 0)
+
+  is_noon: (d) ->
+    (d.getHours() is 12 and d.getMinutes() is 0)
 
   time_for: (item) ->
     if item['end_time']?
-      if item['start_time'].getDay() is item['end_time'].getDay()
+      if @is_midnight(item['start_time']) and @is_midnight(item['end_time']) and (item['start_time'].getDay() is item['end_time'].getDay() or item['start_time'].getDay() + 1 is item['end_time'].getDay()) 
+        'All Day'
+      else if item['start_time'].getDay() is item['end_time'].getDay()
         if item['start_time'].getHours() < 12 and item['end_time'].getHours() > 12
           "#{@format_time(item['start_time'])} &ndash; #{@format_time(item['end_time'])}"
         else
@@ -221,7 +248,7 @@ class Views
       else
         "#{@format_time(item['start_time'])} &ndash; #{@format_time(item['end_time'])}"
     else
-      return 'All Day' if item['start_time'].getHours() is 0 and item['start_time'].getMinutes() is 0
+      return 'All Day' if @is_midnight(item['start_time'])
       @format_time(item['start_time'])
 
   render: (position, data) ->
@@ -265,15 +292,31 @@ class Views
 
 ###
 
-TO DO - Short Term
+LAUNCH
 
-1) Write static content
+1) up speed to 17 seconds
+
+2) Write static content
+
+3) set system to live
+
+
+TO DO - Short Term
 
 2) Make dashboard
 
 3) Hand push content to on.lclark.edu
 
-4) Add remove when event is switched to hidden
+6) Handle Locations Better
+
+7) Show attendance tags
+
+8) insert messes up display? (one blank panel)
+
+9) Truncate summary.
+
+#) image height limit
+
 
 TO DO - Long Term
 

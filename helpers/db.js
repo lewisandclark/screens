@@ -163,6 +163,23 @@
         return this.error(e, "could not get from sorted set " + key + " starting from " + min, 'Data.zrangebyscore');
       }
     };
+    Data.prototype.remove_from_sorted_set = function(key, member) {
+      var object;
+      object = this;
+      try {
+        return this.client.zrem(key, member, function(e, replies) {
+          if (e != null) {
+            return object.error(e, "redis unable to remove " + member + " from sorted set " + key, 'Data.zrem.client');
+          } else {
+            if ((object['_events'] != null) && (object['_events']['remove_from_sorted_set_success'] != null)) {
+              return object.emit('remove_from_sorted_set_success', replies, key);
+            }
+          }
+        });
+      } catch (e) {
+        return this.error(e, "could not remove " + member + " from sorted set " + key, 'Data.zrem');
+      }
+    };
     Data.prototype.get_index_of_sorted_set_item = function(key, member) {
       var object;
       object = this;

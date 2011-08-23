@@ -24,7 +24,8 @@
       return res.render('static/promo.jade', {
         layout: 'layouts/simple.jade',
         locals: {
-          title: 'Lewis & Clark'
+          title: 'Lewis & Clark Campus Display System',
+          buffer_size: env.buffer_size
         }
       });
     }

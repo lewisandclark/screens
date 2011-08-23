@@ -115,6 +115,18 @@ class Data
     catch e
       @error e, "could not get from sorted set #{key} starting from #{min}", 'Data.zrangebyscore'
 
+  remove_from_sorted_set: (key, member) ->
+    object = @
+    try
+      @client.zrem key, member,
+        (e, replies) ->
+          if e?
+            object.error e, "redis unable to remove #{member} from sorted set #{key}", 'Data.zrem.client'
+          else
+            object.emit('remove_from_sorted_set_success', replies, key) if object['_events']? and object['_events']['remove_from_sorted_set_success']?
+    catch e
+      @error e, "could not remove #{member} from sorted set #{key}", 'Data.zrem'
+
   get_index_of_sorted_set_item: (key, member) ->
     object = @
     try

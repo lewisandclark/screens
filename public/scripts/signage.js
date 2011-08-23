@@ -17,7 +17,7 @@
       return document.signage.controller.update(data);
     });
     socket.on('remove', function(data) {
-      return document.signage.controller.remove(data['item']);
+      return document.signage.controller.remove(data['key']);
     });
     socket.on('empty', function(data) {
       console.log('empty received');
@@ -150,9 +150,6 @@
       index = this.has(key);
       if (index != null) {
         this.queue.splice(index, 1);
-        if (this.position >= index) {
-          this.position -= 1;
-        }
         return this.buffer();
       }
     };
@@ -181,9 +178,55 @@
       }
     };
     Controller.prototype.reset = function() {
+      var index, queued, removals, _i, _len, _results;
       $("#guide").fadeIn(750);
       $("#announcements").html('').css('left', 0);
-      return this.position = -1;
+      this.position = -1;
+      removals = (function() {
+        var _len, _ref, _results;
+        _ref = this.queue;
+        _results = [];
+        for (index = 0, _len = _ref.length; index < _len; index++) {
+          queued = _ref[index];
+          _results.push(this.is_past(queued['item']) ? index : null);
+        }
+        return _results;
+      }).call(this);
+      _results = [];
+      for (_i = 0, _len = removals.length; _i < _len; _i++) {
+        index = removals[_i];
+        _results.push(index != null ? this.queue.splice(index, 1) : void 0);
+      }
+      return _results;
+    };
+    Controller.prototype.is_all_day = function(item) {
+      if (item['start_time'].getHours() !== 0 || item['start_time'].getMinutes() !== 0) {
+        return false;
+      }
+      if (item['end_time'] === null) {
+        return true;
+      }
+      if (item['end_time'].getHours() !== 0 || item['end_time'].getMinutes() !== 0) {
+        return false;
+      }
+      return true;
+    };
+    Controller.prototype.is_past = function(item) {
+      var d;
+      d = new Date();
+      if (item['start_time'].getTime() > d.getTime()) {
+        return false;
+      }
+      if (this.is_all_day(item) && d.getHours() > 20) {
+        return true;
+      }
+      if ((item['end_time'] != null) && d.getTime() > (item['start_time'].getTime() + (item['end_time'].getTime() - item['start_time'].getTime()) / 4)) {
+        return true;
+      }
+      if (d.getTime() > (item['start_time'].getTime() + 900000)) {
+        return true;
+      }
+      return false;
     };
     Controller.prototype.render = function() {
       this.views.render(this.position, this.queue[this.position]);
@@ -253,14 +296,28 @@
       if (meridian == null) {
         meridian = true;
       }
-      if (d.getHours() > 12) {
-        return "" + (d.getHours() - 12) + ":" + (this.pad(d.getMinutes())) + (meridian ? ' p.m.' : void 0);
+      if (this.is_midnight(d)) {
+        return "Midnight";
       }
-      return "" + (d.getHours()) + ":" + (this.pad(d.getMinutes())) + (meridian ? ' a.m.' : void 0);
+      if (this.is_noon(d)) {
+        return "Noon";
+      }
+      if (d.getHours() > 12) {
+        return "" + (d.getHours() - 12) + ":" + (this.pad(d.getMinutes())) + (meridian ? ' p.m.' : '');
+      }
+      return "" + (d.getHours()) + ":" + (this.pad(d.getMinutes())) + (meridian ? ' a.m.' : '');
+    };
+    Views.prototype.is_midnight = function(d) {
+      return d.getHours() === 0 && d.getMinutes() === 0;
+    };
+    Views.prototype.is_noon = function(d) {
+      return d.getHours() === 12 && d.getMinutes() === 0;
     };
     Views.prototype.time_for = function(item) {
       if (item['end_time'] != null) {
-        if (item['start_time'].getDay() === item['end_time'].getDay()) {
+        if (this.is_midnight(item['start_time']) && this.is_midnight(item['end_time']) && (item['start_time'].getDay() === item['end_time'].getDay() || item['start_time'].getDay() + 1 === item['end_time'].getDay())) {
+          return 'All Day';
+        } else if (item['start_time'].getDay() === item['end_time'].getDay()) {
           if (item['start_time'].getHours() < 12 && item['end_time'].getHours() > 12) {
             return "" + (this.format_time(item['start_time'])) + " &ndash; " + (this.format_time(item['end_time']));
           } else {
@@ -270,7 +327,7 @@
           return "" + (this.format_time(item['start_time'])) + " &ndash; " + (this.format_time(item['end_time']));
         }
       } else {
-        if (item['start_time'].getHours() === 0 && item['start_time'].getMinutes() === 0) {
+        if (this.is_midnight(item['start_time'])) {
           return 'All Day';
         }
         return this.format_time(item['start_time']);
@@ -319,15 +376,31 @@
   })();
   /*
   
-  TO DO - Short Term
+  LAUNCH
   
-  1) Write static content
+  1) up speed to 17 seconds
+  
+  2) Write static content
+  
+  3) set system to live
+  
+  
+  TO DO - Short Term
   
   2) Make dashboard
   
   3) Hand push content to on.lclark.edu
   
-  4) Add remove when event is switched to hidden
+  6) Handle Locations Better
+  
+  7) Show attendance tags
+  
+  8) insert messes up display? (one blank panel)
+  
+  9) Truncate summary.
+  
+  #) image height limit
+  
   
   TO DO - Long Term
   

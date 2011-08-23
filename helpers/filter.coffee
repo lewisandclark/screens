@@ -25,12 +25,15 @@ class Filter
       livewhale_api = new @livewhale_api
       livewhale_api.on 'success',
         (type, parsed) ->
-          # need to test live status change here if now not 1
           item = new object["livewhale_#{nounInflector.singularize(type)}"] parsed
           item.on 'save_success',
             (stored) ->
-              object.push_to_screens(@)
-              object.push_to_timeline(@)
+              if parsed['status'] isnt 1
+                object.remove_from_screens(@)
+                object.remove_from_timeline(@)
+              else
+                object.push_to_screens(@)
+                object.push_to_timeline(@)
           item.save()
       livewhale_api.collect update['object'], update['object_id']
 
@@ -44,7 +47,14 @@ class Filter
     catch e
       @error e, "unable to push #{item.key()} to timeline(s)", 'Filter.push_to_timeline'
 
-  remove_from_screens: (type='events', id) ->
-    @io.sockets.emit 'removed', { type: type, id: id }
+  remove_from_screens: (item) ->
+    @io.sockets.volatile.emit 'remove', { key: item.key() }
+
+  remove_from_timeline: (item) ->
+    db = new @db
+    try
+      db.remove_from_sorted_set("timeline:#{channel}", item.key()) for channel in item.channels()
+    catch e
+      @error e, "unable to remove #{item.key()} from timeline(s)", 'Filter.remove_from_timeline'
 
 module.exports = Filter

@@ -100,6 +100,7 @@
         if (id === null) {
           id = this.properties['id'];
         }
+        console.log("ID: " + id);
         db.on('del_success', function(type, id) {
           if ((object['_events'] != null) && (object['_events']['delete_success'] != null)) {
             return object.emit('delete_success', type, id);

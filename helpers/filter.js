@@ -28,8 +28,13 @@
           var item;
           item = new object["livewhale_" + (nounInflector.singularize(type))](parsed);
           item.on('save_success', function(stored) {
-            object.push_to_screens(this);
-            return object.push_to_timeline(this);
+            if (parsed['status'] !== 1) {
+              object.remove_from_screens(this);
+              return object.remove_from_timeline(this);
+            } else {
+              object.push_to_screens(this);
+              return object.push_to_timeline(this);
+            }
           });
           return item.save();
         });
@@ -57,14 +62,25 @@
         return this.error(e, "unable to push " + (item.key()) + " to timeline(s)", 'Filter.push_to_timeline');
       }
     };
-    Filter.prototype.remove_from_screens = function(type, id) {
-      if (type == null) {
-        type = 'events';
-      }
-      return this.io.sockets.emit('removed', {
-        type: type,
-        id: id
+    Filter.prototype.remove_from_screens = function(item) {
+      return this.io.sockets.volatile.emit('remove', {
+        key: item.key()
       });
+    };
+    Filter.prototype.remove_from_timeline = function(item) {
+      var channel, db, _i, _len, _ref, _results;
+      db = new this.db;
+      try {
+        _ref = item.channels();
+        _results = [];
+        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+          channel = _ref[_i];
+          _results.push(db.remove_from_sorted_set("timeline:" + channel, item.key()));
+        }
+        return _results;
+      } catch (e) {
+        return this.error(e, "unable to remove " + (item.key()) + " from timeline(s)", 'Filter.remove_from_timeline');
+      }
     };
     return Filter;
   })();
