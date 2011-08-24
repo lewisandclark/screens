@@ -32,6 +32,10 @@ $(document).ready ->
       console.log 'error received'
       console.log data
 
+  socket.on 'speed',
+    (data) ->
+      document.signage.controller.set_speed(data)
+
   socket.on 'reload',
     (data) ->
       window.location.reload()
@@ -44,8 +48,10 @@ class Controller
     @views = views
     @queue = []
     @buffer_size = 30
-    @screen = ''
+    @screen = {}
     @position = 0
+    @additions = []
+    @removals = []
     @interval = null
     @seconds = 17
 
@@ -56,6 +62,13 @@ class Controller
   set_screen: (screen) ->
     @screen = screen
     @buffer()
+
+  set_speed: (data) ->
+    seconds = parseInt(data['seconds'])
+    if !isNaN(seconds)
+      @seconds = seconds
+      clearInterval @interval
+      @interval = setInterval("document.signage.controller.next()", (@seconds * 1000))
   
   has: (key) ->
     for queued, index in @queue
@@ -80,8 +93,10 @@ class Controller
         if data? and data.data? and data.data.url?
           index = object.has(key)
           object.queue[index]['item']['qrcode'] = data.data.url if index?
+        else if data? and data.status_code? and data.status_txt?
+          object.socket.emit 'error', { screen: object.screen, error: "qrcodify.ajax.error: #{data.status_code} #{data.status_txt}" }
       error: (jqXHR, textStatus, errorThrown) ->
-        null
+        object.socket.emit 'error', { screen: object.screen, error: "qrcodify.ajax.error: #{textStatus} #{errorThrown}" }
     })
 
   is_live: (item) ->
@@ -102,12 +117,17 @@ class Controller
       exists = @has(data['key'])
       if exists?
         @queue[exists] = data
+        @qrcodify(data['key'], data['item']['link']) if (not data['item']['qrcode']?)
       else if @is_live(data['item'])
-        index = @insert_index(data)
-        if index?
-          @queue.splice index, 0, data
-          @position += 1 if @position > index
-      @qrcodify(data['key'], data['item']['link'])
+        if !@running()
+          @queue.push data
+        else
+          index = @insert_index(data)
+          if index? and index <= @position
+            @additions.push data
+          else
+            @queue.splice(index, 0, data) if index?
+            @qrcodify(data['key'], data['item']['link']) if (not data['item']['qrcode']?)
       @begin() if !@running()
     catch e
       console.log e
@@ -115,8 +135,11 @@ class Controller
   remove: (key) ->
     index = @has(key)
     if index?
-      @queue.splice index, 1
-      @buffer()
+      if index <= @position
+        @removals.push key
+      else
+        @queue.splice index, 1
+        @buffer()
 
   buffer: () ->
     return if @queue.length >= @buffer_size
@@ -140,10 +163,16 @@ class Controller
     $("#guide").fadeIn(750)
     $("#announcements").html('').css('left', 0)
     @position = -1
-    removals = for queued, index in @queue
-      if @is_past(queued['item']) then index else null
-    for index in removals
-      @queue.splice index, 1 if index?
+    for addition in @additions
+      index = @insert_index(addition)
+      if index?
+        @queue.splice(index, 0, addition)
+        @qrcodify(addition['key'], addition['item']['link']) if (not addition['item']['qrcode']?)
+    for queued in @queue
+      @removals.push(queued['key']) if @is_past(queued['item'])
+    for key in @removals
+      index = @has(key)
+      @queue.splice(index, 1) if index?
 
   is_all_day: (item) ->
     return false if item['start_time'].getHours() isnt 0 or item['start_time'].getMinutes() isnt 0
@@ -303,8 +332,6 @@ TO DO - Short Term
 6) Handle Locations Better
 
 7) Show attendance tags
-
-8) insert messes up display? (one blank panel)
 
 9) Truncate summary.
 

@@ -27,6 +27,9 @@
       console.log('error received');
       return console.log(data);
     });
+    socket.on('speed', function(data) {
+      return document.signage.controller.set_speed(data);
+    });
     return socket.on('reload', function(data) {
       return window.location.reload();
     });
@@ -37,8 +40,10 @@
       this.views = views;
       this.queue = [];
       this.buffer_size = 30;
-      this.screen = '';
+      this.screen = {};
       this.position = 0;
+      this.additions = [];
+      this.removals = [];
       this.interval = null;
       this.seconds = 17;
     }
@@ -51,6 +56,15 @@
     Controller.prototype.set_screen = function(screen) {
       this.screen = screen;
       return this.buffer();
+    };
+    Controller.prototype.set_speed = function(data) {
+      var seconds;
+      seconds = parseInt(data['seconds']);
+      if (!isNaN(seconds)) {
+        this.seconds = seconds;
+        clearInterval(this.interval);
+        return this.interval = setInterval("document.signage.controller.next()", this.seconds * 1000);
+      }
     };
     Controller.prototype.has = function(key) {
       var index, queued, _len, _ref;
@@ -90,10 +104,18 @@
             if (index != null) {
               return object.queue[index]['item']['qrcode'] = data.data.url;
             }
+          } else if ((data != null) && (data.status_code != null) && (data.status_txt != null)) {
+            return object.socket.emit('error', {
+              screen: object.screen,
+              error: "qrcodify.ajax.error: " + data.status_code + " " + data.status_txt
+            });
           }
         },
         error: function(jqXHR, textStatus, errorThrown) {
-          return null;
+          return object.socket.emit('error', {
+            screen: object.screen,
+            error: "qrcodify.ajax.error: " + textStatus + " " + errorThrown
+          });
         }
       });
     };
@@ -128,16 +150,26 @@
         exists = this.has(data['key']);
         if (exists != null) {
           this.queue[exists] = data;
+          if (!(data['item']['qrcode'] != null)) {
+            this.qrcodify(data['key'], data['item']['link']);
+          }
         } else if (this.is_live(data['item'])) {
-          index = this.insert_index(data);
-          if (index != null) {
-            this.queue.splice(index, 0, data);
-            if (this.position > index) {
-              this.position += 1;
+          if (!this.running()) {
+            this.queue.push(data);
+          } else {
+            index = this.insert_index(data);
+            if ((index != null) && index <= this.position) {
+              this.additions.push(data);
+            } else {
+              if (index != null) {
+                this.queue.splice(index, 0, data);
+              }
+              if (!(data['item']['qrcode'] != null)) {
+                this.qrcodify(data['key'], data['item']['link']);
+              }
             }
           }
         }
-        this.qrcodify(data['key'], data['item']['link']);
         if (!this.running()) {
           return this.begin();
         }
@@ -149,8 +181,12 @@
       var index;
       index = this.has(key);
       if (index != null) {
-        this.queue.splice(index, 1);
-        return this.buffer();
+        if (index <= this.position) {
+          return this.removals.push(key);
+        } else {
+          this.queue.splice(index, 1);
+          return this.buffer();
+        }
       }
     };
     Controller.prototype.buffer = function() {
@@ -178,23 +214,33 @@
       }
     };
     Controller.prototype.reset = function() {
-      var index, queued, removals, _i, _len, _results;
+      var addition, index, key, queued, _i, _j, _k, _len, _len2, _len3, _ref, _ref2, _ref3, _results;
       $("#guide").fadeIn(750);
       $("#announcements").html('').css('left', 0);
       this.position = -1;
-      removals = (function() {
-        var _len, _ref, _results;
-        _ref = this.queue;
-        _results = [];
-        for (index = 0, _len = _ref.length; index < _len; index++) {
-          queued = _ref[index];
-          _results.push(this.is_past(queued['item']) ? index : null);
+      _ref = this.additions;
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        addition = _ref[_i];
+        index = this.insert_index(addition);
+        if (index != null) {
+          this.queue.splice(index, 0, addition);
+          if (!(addition['item']['qrcode'] != null)) {
+            this.qrcodify(addition['key'], addition['item']['link']);
+          }
         }
-        return _results;
-      }).call(this);
+      }
+      _ref2 = this.queue;
+      for (_j = 0, _len2 = _ref2.length; _j < _len2; _j++) {
+        queued = _ref2[_j];
+        if (this.is_past(queued['item'])) {
+          this.removals.push(queued['key']);
+        }
+      }
+      _ref3 = this.removals;
       _results = [];
-      for (_i = 0, _len = removals.length; _i < _len; _i++) {
-        index = removals[_i];
+      for (_k = 0, _len3 = _ref3.length; _k < _len3; _k++) {
+        key = _ref3[_k];
+        index = this.has(key);
         _results.push(index != null ? this.queue.splice(index, 1) : void 0);
       }
       return _results;
@@ -387,8 +433,6 @@
   6) Handle Locations Better
   
   7) Show attendance tags
-  
-  8) insert messes up display? (one blank panel)
   
   9) Truncate summary.
   

@@ -30,6 +30,18 @@
       });
     }
   });
+  app.get('/reload', function(req, res) {
+    io.sockets.emit('reload');
+    return res.redirect('http://on.lclark.edu');
+  });
+  app.get('/speed/:value', function(req, res) {
+    var seconds;
+    seconds = req.params.value;
+    io.sockets.emit('speed', {
+      seconds: seconds
+    });
+    return res.redirect('http://on.lclark.edu');
+  });
   app.listen(env.port);
   io.sockets.on('connection', function(socket) {
     var dashboard, retrieve;
@@ -38,17 +50,16 @@
     socket.on('items', function(data) {
       return retrieve.get_lead_member(data['count']);
     });
-    return socket.on('impression', function(data) {
+    socket.on('impression', function(data) {
       return dashboard.capture(data);
+    });
+    return socket.on('error', function(data) {
+      console.log("error from " + data['screen']['name']);
+      return console.log(data['error']);
     });
   });
   appSSL.get('/', function(req, res) {
-    return res.render('static/promo.jade', {
-      layout: 'layouts/simple.jade',
-      locals: {
-        title: 'Lewis & Clark'
-      }
-    });
+    return res.redirect('http://on.lclark.edu');
   });
   appSSL.get('/updates', function(req, res) {
     var params;

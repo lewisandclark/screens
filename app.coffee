@@ -20,6 +20,17 @@ app.get '/',
     else
       res.render 'static/promo.jade', { layout: 'layouts/simple.jade', locals: { title: 'Lewis & Clark Campus Display System', buffer_size: env.buffer_size } }
 
+app.get '/reload',
+  (req, res) ->
+    io.sockets.emit 'reload'
+    res.redirect 'http://on.lclark.edu'
+
+app.get '/speed/:value',
+  (req, res) ->
+    seconds = req.params.value
+    io.sockets.emit 'speed', { seconds: seconds }
+    res.redirect 'http://on.lclark.edu'
+
 app.listen(env.port)
 
 io.sockets.on 'connection',
@@ -32,12 +43,16 @@ io.sockets.on 'connection',
     socket.on 'impression',
       (data) ->
         dashboard.capture(data)
+    socket.on 'error',
+      (data) ->
+        console.log "error from #{data['screen']['name']}"
+        console.log data['error']
 
 
 # SSL App
 appSSL.get '/',
   (req, res) ->
-    res.render 'static/promo.jade', { layout: 'layouts/simple.jade', locals: { title: 'Lewis & Clark' } }
+    res.redirect 'http://on.lclark.edu'
 
 appSSL.get '/updates',
   (req, res) ->

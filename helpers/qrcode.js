@@ -13,7 +13,7 @@
         url = 'http://on.lclark.edu';
       }
       if (size == null) {
-        size = 800;
+        size = 300;
       }
       query = {
         login: env.bitly.account,

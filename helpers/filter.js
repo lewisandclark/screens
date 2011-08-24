@@ -9,6 +9,7 @@
       this.io = io;
       this.error = require(__dirname + '/error');
       this.db = require(__dirname + '/db');
+      this.qrcode = require(__dirname + '/qrcode');
       this.livewhale_api = require(__dirname + '/livewhale_api');
       this.livewhale_event = require(__dirname + '/../models/livewhale_event');
     }
@@ -33,7 +34,8 @@
               return object.remove_from_timeline(this);
             } else {
               object.push_to_screens(this);
-              return object.push_to_timeline(this);
+              object.push_to_timeline(this);
+              return object.get_qrcode(this);
             }
           });
           return item.save();
@@ -61,6 +63,22 @@
       } catch (e) {
         return this.error(e, "unable to push " + (item.key()) + " to timeline(s)", 'Filter.push_to_timeline');
       }
+    };
+    Filter.prototype.get_qrcode = function(item) {
+      var object, qrcode;
+      if (item['qrcode'] != null) {
+        return;
+      }
+      object = this;
+      qrcode = new this.qrcode;
+      qrcode.on('success', function(url) {
+        item['properties']['qrcode'] = url;
+        item.on('save_success', function(stored) {
+          return object.push_to_screens(this);
+        });
+        return item.save();
+      });
+      return qrcode.generate(item['link']);
     };
     Filter.prototype.remove_from_screens = function(item) {
       return this.io.sockets.volatile.emit('remove', {

@@ -11,6 +11,7 @@ class Filter
     @io = io
     @error = require __dirname + '/error'
     @db = require __dirname + '/db'
+    @qrcode = require __dirname + '/qrcode'
     @livewhale_api = require __dirname + '/livewhale_api'
     @livewhale_event = require __dirname + '/../models/livewhale_event'
 
@@ -34,6 +35,7 @@ class Filter
               else
                 object.push_to_screens(@)
                 object.push_to_timeline(@)
+                object.get_qrcode(@)
           item.save()
       livewhale_api.collect update['object'], update['object_id']
 
@@ -46,6 +48,19 @@ class Filter
       db.add_to_sorted_set("timeline:#{channel}", item.timestamp(), item.key()) for channel in item.channels()
     catch e
       @error e, "unable to push #{item.key()} to timeline(s)", 'Filter.push_to_timeline'
+
+  get_qrcode: (item) ->
+    return if item['qrcode']?
+    object = @
+    qrcode = new @qrcode
+    qrcode.on 'success',
+      (url) -> 
+        item['properties']['qrcode'] = url
+        item.on 'save_success',
+          (stored) ->
+            object.push_to_screens(@)
+        item.save()
+    qrcode.generate item['link']
 
   remove_from_screens: (item) ->
     @io.sockets.volatile.emit 'remove', { key: item.key() }

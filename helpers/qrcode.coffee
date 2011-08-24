@@ -11,7 +11,7 @@ class QRCode
 
   @['prototype'] = new events.EventEmitter
 
-  generate: (url='http://on.lclark.edu', size=800) ->
+  generate: (url='http://on.lclark.edu', size=300) ->
     query =
       login: env.bitly.account
       apiKey: env.bitly.api_key
