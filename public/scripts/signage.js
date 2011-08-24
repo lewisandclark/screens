@@ -40,7 +40,7 @@
       this.screen = '';
       this.position = 0;
       this.interval = null;
-      this.seconds = 5;
+      this.seconds = 17;
     }
     Controller.prototype.running = function() {
       if (this.interval != null) {
@@ -376,16 +376,9 @@
   })();
   /*
   
-  LAUNCH
-  
-  1) up speed to 17 seconds
-  
-  2) Write static content
-  
-  3) set system to live
-  
-  
   TO DO - Short Term
+  
+  1) create sockets speed adjust
   
   2) Make dashboard
   
@@ -401,6 +394,7 @@
   
   #) image height limit
   
+  #) check failed ids: 6519, 6537, 6534, 6533, 6530
   
   TO DO - Long Term
   

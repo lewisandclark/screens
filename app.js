@@ -30,15 +30,6 @@
       });
     }
   });
-  app.get('/test', function(req, res) {
-    return res.render('signage/index.jade', {
-      layout: 'layouts/signage.jade',
-      locals: {
-        title: 'Lewis & Clark Campus Display System',
-        digital_ts: '10029244356'
-      }
-    });
-  });
   app.listen(env.port);
   io.sockets.on('connection', function(socket) {
     var dashboard, retrieve;
@@ -56,15 +47,6 @@
       layout: 'layouts/simple.jade',
       locals: {
         title: 'Lewis & Clark'
-      }
-    });
-  });
-  appSSL.get('/test', function(req, res) {
-    return res.render('signage/index.jade', {
-      layout: 'layouts/signage.jade',
-      locals: {
-        title: 'Lewis & Clark Campus Display System',
-        digital_ts: '10029244356'
       }
     });
   });

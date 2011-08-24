@@ -20,10 +20,6 @@ app.get '/',
     else
       res.render 'static/promo.jade', { layout: 'layouts/simple.jade', locals: { title: 'Lewis & Clark Campus Display System', buffer_size: env.buffer_size } }
 
-app.get '/test',
-  (req, res) ->
-    res.render 'signage/index.jade', { layout: 'layouts/signage.jade', locals: { title: 'Lewis & Clark Campus Display System', digital_ts: '10029244356' } }
-
 app.listen(env.port)
 
 io.sockets.on 'connection',
@@ -42,10 +38,6 @@ io.sockets.on 'connection',
 appSSL.get '/',
   (req, res) ->
     res.render 'static/promo.jade', { layout: 'layouts/simple.jade', locals: { title: 'Lewis & Clark' } }
-
-appSSL.get '/test',
-  (req, res) ->
-    res.render 'signage/index.jade', { layout: 'layouts/signage.jade', locals: { title: 'Lewis & Clark Campus Display System', digital_ts: '10029244356' } }
 
 appSSL.get '/updates',
   (req, res) ->
