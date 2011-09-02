@@ -29,6 +29,9 @@
           var item;
           item = new object["livewhale_" + (nounInflector.singularize(type))](parsed);
           item.on('save_success', function(stored) {
+            if (item['properties']['qrcode'] != null) {
+              return;
+            }
             if (parsed['status'] !== 1) {
               object.remove_from_screens(this);
               return object.remove_from_timeline(this);
@@ -53,7 +56,7 @@
       var channel, db, _i, _len, _ref, _results;
       db = new this.db;
       try {
-        _ref = item.channels();
+        _ref = item['properties']['channels'];
         _results = [];
         for (_i = 0, _len = _ref.length; _i < _len; _i++) {
           channel = _ref[_i];
@@ -78,7 +81,7 @@
         });
         return item.save();
       });
-      return qrcode.generate(item['link']);
+      return qrcode.generate(item['properties']['link']);
     };
     Filter.prototype.remove_from_screens = function(item) {
       return this.io.sockets.volatile.emit('remove', {
@@ -89,7 +92,7 @@
       var channel, db, _i, _len, _ref, _results;
       db = new this.db;
       try {
-        _ref = item.channels();
+        _ref = item['properties']['channels'];
         _results = [];
         for (_i = 0, _len = _ref.length; _i < _len; _i++) {
           channel = _ref[_i];

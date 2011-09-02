@@ -5,6 +5,7 @@ env = require __dirname + '/config/env'
 app = require __dirname + '/config/app'
 appSSL = require __dirname + '/config/appSSL'
 io = require('socket.io').listen app
+io.set('log level', 1) if process.env['NODE_ENV']? and process.env['NODE_ENV'] is 'production'
 
 helpers =
   request: require __dirname + '/helpers/request'
@@ -16,19 +17,21 @@ helpers =
 app.get '/',
   (req, res) ->
     if (helpers.request.is_screen(req) and env.system_is_live) or helpers.request.is_test_screen(req)
+      # res.render 'static/offline.jade', { layout: 'layouts/offline.jade', locals: { title: 'Lewis & Clark Campus Display System' } }
+      # res.render 'static/empty.jade', { layout: 'layouts/simple.jade', locals: { title: 'Lewis & Clark Campus Display System' } }
       res.render 'signage/index.jade', { layout: 'layouts/signage.jade', locals: { title: 'Lewis & Clark Campus Display System', digital_ts: '10029244356' } }
     else
       res.render 'static/promo.jade', { layout: 'layouts/simple.jade', locals: { title: 'Lewis & Clark Campus Display System', buffer_size: env.buffer_size } }
 
 app.get '/reload',
   (req, res) ->
-    io.sockets.emit 'reload'
+    io.sockets.volatile.emit 'reload'
     res.redirect 'http://on.lclark.edu'
 
 app.get '/speed/:value',
   (req, res) ->
     seconds = req.params.value
-    io.sockets.emit 'speed', { seconds: seconds }
+    io.sockets.volatile.emit 'speed', { seconds: seconds }
     res.redirect 'http://on.lclark.edu'
 
 app.listen(env.port)
@@ -43,6 +46,7 @@ io.sockets.on 'connection',
     socket.on 'impression',
       (data) ->
         dashboard.capture(data)
+        true
     socket.on 'error',
       (data) ->
         console.log "error from #{data['screen']['name']}"

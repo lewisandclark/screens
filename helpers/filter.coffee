@@ -29,6 +29,7 @@ class Filter
           item = new object["livewhale_#{nounInflector.singularize(type)}"] parsed
           item.on 'save_success',
             (stored) ->
+              return if item['properties']['qrcode']?
               if parsed['status'] isnt 1
                 object.remove_from_screens(@)
                 object.remove_from_timeline(@)
@@ -45,7 +46,7 @@ class Filter
   push_to_timeline: (item) ->
     db = new @db
     try
-      db.add_to_sorted_set("timeline:#{channel}", item.timestamp(), item.key()) for channel in item.channels()
+      db.add_to_sorted_set("timeline:#{channel}", item.timestamp(), item.key()) for channel in item['properties']['channels']
     catch e
       @error e, "unable to push #{item.key()} to timeline(s)", 'Filter.push_to_timeline'
 
@@ -60,7 +61,7 @@ class Filter
           (stored) ->
             object.push_to_screens(@)
         item.save()
-    qrcode.generate item['link']
+    qrcode.generate item['properties']['link']
 
   remove_from_screens: (item) ->
     @io.sockets.volatile.emit 'remove', { key: item.key() }
@@ -68,7 +69,7 @@ class Filter
   remove_from_timeline: (item) ->
     db = new @db
     try
-      db.remove_from_sorted_set("timeline:#{channel}", item.key()) for channel in item.channels()
+      db.remove_from_sorted_set("timeline:#{channel}", item.key()) for channel in item['properties']['channels']
     catch e
       @error e, "unable to remove #{item.key()} from timeline(s)", 'Filter.remove_from_timeline'
 

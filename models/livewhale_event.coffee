@@ -19,8 +19,8 @@ class LiveWhaleEvent
       link: "(typeof this.properties[property] === 'string' && this.properties[property].length > 0)"
       start_time: "(Date.parse(this.properties[property]) > 0)"
       places: "(typeof this.properties[property] === 'object' && this.properties[property].length > 0 && typeof this.properties[property][0]['id'] === 'number' && parseInt(this.properties[property][0]['id']) === this.properties[property][0]['id'] && this.properties[property][0]['id'] > 0)"
-    # parsed_data['parent_id'] = 6520 if parsed_data['id'] isnt 6520 # remove me later
     @properties = parsed_data
+    @set_channels()
 
   @['prototype'] = new events.EventEmitter
 
@@ -43,12 +43,11 @@ class LiveWhaleEvent
   is_authoritative: () ->
     (env.authoritative_sources.indexOf(@properties['group']['id']) >= 0)
 
-  channels: () ->
+  set_channels: () ->
     return [] if @properties['group'] is null
-    channels = []
+    @properties['channels'] = []
     for channel, criteria of env.channels
-      channels[channels.length] = channel if criteria.schools.indexOf(@properties['group']['school']) >= 0 or criteria.group_ids.indexOf(@properties['group']['id']) >= 0
-    channels
+      @properties['channels'].push channel if criteria.schools.indexOf(@properties['group']['school']) >= 0 or criteria.group_ids.indexOf(@properties['group']['id']) >= 0
 
   valid: () ->
     for property, test of @validations

@@ -5,7 +5,9 @@
   http = require('http');
   env = require(__dirname + '/../config/env');
   QRCode = (function() {
-    function QRCode() {}
+    function QRCode() {
+      this.error = require(__dirname + '/error');
+    }
     QRCode['prototype'] = new events.EventEmitter;
     QRCode.prototype.generate = function(url, size) {
       var object, options, query, req;
@@ -38,15 +40,19 @@
           try {
             parsed = JSON.parse(data);
             if ((parsed != null) && (parsed.data != null) && (parsed.data.url != null)) {
-              return object.emit('success', "" + parsed.data.url + ".qrcode");
+              if ((object['_events'] != null) && (object['_events']['success'] != null)) {
+                return object.emit('success', "" + parsed.data.url + ".qrcode");
+              }
+            } else {
+              return object.error(e, "unable to find qrcode for " + url + "; data: " + data, 'QRCode.generate.request');
             }
           } catch (e) {
-            return object.emit('error', e);
+            return object.error(e, "unable to parse qrcode for " + url + "; data: " + data, 'QRCode.generate.request');
           }
         });
       });
       req.on('error', function(e) {
-        return object.emit('error', e);
+        return object.error(e, "unable to request qrcode for " + url + "; options: " + options, 'QRCode.generate');
       });
       return true;
     };

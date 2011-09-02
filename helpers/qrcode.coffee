@@ -8,6 +8,7 @@ env = require __dirname + '/../config/env'
 class QRCode
 
   constructor: () ->
+    @error = require __dirname + '/error'
 
   @['prototype'] = new events.EventEmitter
 
@@ -31,12 +32,14 @@ class QRCode
           try
             parsed = JSON.parse data
             if parsed? and parsed.data? and parsed.data.url?
-              object.emit 'success', "#{parsed.data.url}.qrcode"
+              object.emit('success', "#{parsed.data.url}.qrcode") if object['_events']? and object['_events']['success']?
+            else
+              object.error e, "unable to find qrcode for #{url}; data: #{data}", 'QRCode.generate.request'
           catch e
-            object.emit 'error', e
+            object.error e, "unable to parse qrcode for #{url}; data: #{data}", 'QRCode.generate.request'
     req.on 'error',
       (e) ->
-        object.emit 'error', e
+        object.error e, "unable to request qrcode for #{url}; options: #{options}", 'QRCode.generate'
     true
 
 module.exports = QRCode

@@ -56,7 +56,7 @@ class Retrieve
     object = @
     @db.on 'get_success',
       (item, key) ->
-        object.socket.volatile.emit 'update', { key: key, item: item }
+        object.socket.emit 'update', { key: key, item: item }
     for member in members
       @db.get member
 

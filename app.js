@@ -5,6 +5,9 @@
   app = require(__dirname + '/config/app');
   appSSL = require(__dirname + '/config/appSSL');
   io = require('socket.io').listen(app);
+  if ((process.env['NODE_ENV'] != null) && process.env['NODE_ENV'] === 'production') {
+    io.set('log level', 1);
+  }
   helpers = {
     request: require(__dirname + '/helpers/request'),
     filter: require(__dirname + '/helpers/filter'),
@@ -31,13 +34,13 @@
     }
   });
   app.get('/reload', function(req, res) {
-    io.sockets.emit('reload');
+    io.sockets.volatile.emit('reload');
     return res.redirect('http://on.lclark.edu');
   });
   app.get('/speed/:value', function(req, res) {
     var seconds;
     seconds = req.params.value;
-    io.sockets.emit('speed', {
+    io.sockets.volatile.emit('speed', {
       seconds: seconds
     });
     return res.redirect('http://on.lclark.edu');
@@ -51,7 +54,8 @@
       return retrieve.get_lead_member(data['count']);
     });
     socket.on('impression', function(data) {
-      return dashboard.capture(data);
+      dashboard.capture(data);
+      return true;
     });
     return socket.on('error', function(data) {
       console.log("error from " + data['screen']['name']);

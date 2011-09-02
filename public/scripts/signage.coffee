@@ -53,10 +53,15 @@ class Controller
     @additions = []
     @removals = []
     @interval = null
-    @seconds = 17
+    @timeout = null
+    @seconds = 10
 
   running: () ->
     return true if @interval?
+    false
+
+  waiting: () ->
+    return true if @timeout?
     false
 
   set_screen: (screen) ->
@@ -103,6 +108,11 @@ class Controller
     return true if item['status'] is 1
     false
 
+  has_matching_channel: (item) ->
+    return true if (not item['channels']?)
+    return true if item['channels'].indexOf(@screen['channel']) >= 0
+    false
+
   insert_index: (data) ->
     return 0 if @queue.length is 0
     for queued, index in @queue
@@ -118,28 +128,19 @@ class Controller
       if exists?
         @queue[exists] = data
         @qrcodify(data['key'], data['item']['link']) if (not data['item']['qrcode']?)
-      else if @is_live(data['item'])
+      else if @is_live(data['item']) and @has_matching_channel(data['item'])
         if !@running()
           @queue.push data
+          @qrcodify(data['key'], data['item']['link']) if (not data['item']['qrcode']?)
         else
-          index = @insert_index(data)
-          if index? and index <= @position
-            @additions.push data
-          else
-            @queue.splice(index, 0, data) if index?
-            @qrcodify(data['key'], data['item']['link']) if (not data['item']['qrcode']?)
-      @begin() if !@running()
+          @additions.push data
+      @timeout = setTimeout("document.signage.controller.begin()", (@seconds * 1000)) if !@running() and !@waiting()
+      # @begin() if !@running() # and !@waiting()
     catch e
       console.log e
 
   remove: (key) ->
-    index = @has(key)
-    if index?
-      if index <= @position
-        @removals.push key
-      else
-        @queue.splice index, 1
-        @buffer()
+    @removals.push key
 
   buffer: () ->
     return if @queue.length >= @buffer_size
@@ -173,6 +174,7 @@ class Controller
     for key in @removals
       index = @has(key)
       @queue.splice(index, 1) if index?
+    @buffer()
 
   is_all_day: (item) ->
     return false if item['start_time'].getHours() isnt 0 or item['start_time'].getMinutes() isnt 0
@@ -283,8 +285,10 @@ class Views
   render: (position, data) ->
     key = data['key'].replace(/:/, '_')
     item = data['item']
+    screenWidth = $(window).width()
+    screenHeight = $(window).height()
     output = '
-    <article id="' + key + '" style="opacity: 0;left:' + (@screenWidth * (position+1) + 18) + 'px;width: ' + (@screenWidth-36) + 'px;height: ' + (@screenHeight-36) + 'px;">
+    <article id="' + key + '" style="opacity: 0;left:' + (screenWidth * (position+1) + 18) + 'px;width: ' + (screenWidth-36) + 'px;height: ' + (screenHeight-36) + 'px;">
       ' + (if item['images']? and item['images'][0]? then '<img src="' + item['images'][0].url + '" alt="' + item['images'][0].alt + '" />' else '') + '
       <div>
         <h2 class="when' + @day_css(item['start_time']) + '">
@@ -294,9 +298,7 @@ class Views
         <h3 class="what">
           <span class="title">' + item['title'] + '</span>
         </h3>
-        <h4 class="where">
-          <span class="location">' + item['location'] + '</span>
-        </h4>
+        ' + (if item['location']? then '<h4 class="where"><span class="location">' + item['location'] + '</span></h4>' else '') + '
         <p class="extra-details">
           ' + (if item['repeat']? and item['repeat']['next_start_time']? then '<span class="repeats_next">' + item['repeat']['next_start_time'] + '</span>' else '') + '
         </p>
@@ -304,7 +306,7 @@ class Views
         <h4 class="contact">
           <span class="school">' + item['group']['school'] + '</span>
           <span class="group">' + item['group']['name'] + '</span>
-          ' + '<span class="link">' + (if item['qrcode']? then item['qrcode'] else item['link']).replace(/^http(s?):\/\/(www)?\./i, '').replace(/\/(\d+)-?[a-z\-]+$/i, '/$1') + (if item['qrcode']? then '<img src="' + item['qrcode'] + '.qrcode" alt="QR Code" />' else '') + '</span>
+          ' + '<span class="link">' + (if item['qrcode']? then item['qrcode'].replace(/\.qrcode$/, '') else item['link']).replace(/^http(s?):\/\/(www)?\./i, '').replace(/\/(\d+)-?[a-z\-]+$/i, '/$1') + (if item['qrcode']? then '<img src="' + (if item['qrcode'].match(/\.qrcode$/) then item['qrcode'] else "#{item['qrcode']}.qrcode") + '" alt="QR Code" />' else '') + '</span>
         </h4>
       </div>
     </article>'
@@ -315,7 +317,7 @@ class Views
       opacity: 0
     }, 500)
     $("#announcements").animate({
-      left: '-=' + @screenWidth
+      left: '-=' + screenWidth
     }, 1500, 'easeInOutBack')
 
 
@@ -323,11 +325,7 @@ class Views
 
 TO DO - Short Term
 
-1) create sockets speed adjust
-
 2) Make dashboard
-
-3) Hand push content to on.lclark.edu
 
 6) Handle Locations Better
 
@@ -337,7 +335,16 @@ TO DO - Short Term
 
 #) image height limit
 
-#) check failed ids: 6519, 6537, 6534, 6533, 6530
+#) check failed ids: 6519, 6537, 6534, 6533, 6530, 6521, 6528
+
+#) check failed api suck? 6746
+
+#) rewrite is_test_screen to use screens['test']
+
+#) switching time with title
+
+#) remove image failures
+
 
 TO DO - Long Term
 

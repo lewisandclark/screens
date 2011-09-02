@@ -78,7 +78,7 @@
       var member, object, _i, _len, _results;
       object = this;
       this.db.on('get_success', function(item, key) {
-        return object.socket.volatile.emit('update', {
+        return object.socket.emit('update', {
           key: key,
           item: item
         });

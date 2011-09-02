@@ -45,10 +45,17 @@
       this.additions = [];
       this.removals = [];
       this.interval = null;
-      this.seconds = 17;
+      this.timeout = null;
+      this.seconds = 10;
     }
     Controller.prototype.running = function() {
       if (this.interval != null) {
+        return true;
+      }
+      return false;
+    };
+    Controller.prototype.waiting = function() {
+      if (this.timeout != null) {
         return true;
       }
       return false;
@@ -125,6 +132,15 @@
       }
       return false;
     };
+    Controller.prototype.has_matching_channel = function(item) {
+      if (!(item['channels'] != null)) {
+        return true;
+      }
+      if (item['channels'].indexOf(this.screen['channel']) >= 0) {
+        return true;
+      }
+      return false;
+    };
     Controller.prototype.insert_index = function(data) {
       var index, queued, _len, _ref;
       if (this.queue.length === 0) {
@@ -143,7 +159,7 @@
       return null;
     };
     Controller.prototype.update = function(data) {
-      var exists, index;
+      var exists;
       try {
         data['item'] = JSON.parse(data['item']);
         data['item'] = this.datify(data['item']);
@@ -153,41 +169,25 @@
           if (!(data['item']['qrcode'] != null)) {
             this.qrcodify(data['key'], data['item']['link']);
           }
-        } else if (this.is_live(data['item'])) {
+        } else if (this.is_live(data['item']) && this.has_matching_channel(data['item'])) {
           if (!this.running()) {
             this.queue.push(data);
-          } else {
-            index = this.insert_index(data);
-            if ((index != null) && index <= this.position) {
-              this.additions.push(data);
-            } else {
-              if (index != null) {
-                this.queue.splice(index, 0, data);
-              }
-              if (!(data['item']['qrcode'] != null)) {
-                this.qrcodify(data['key'], data['item']['link']);
-              }
+            if (!(data['item']['qrcode'] != null)) {
+              this.qrcodify(data['key'], data['item']['link']);
             }
+          } else {
+            this.additions.push(data);
           }
         }
-        if (!this.running()) {
-          return this.begin();
+        if (!this.running() && !this.waiting()) {
+          return this.timeout = setTimeout("document.signage.controller.begin()", this.seconds * 1000);
         }
       } catch (e) {
         return console.log(e);
       }
     };
     Controller.prototype.remove = function(key) {
-      var index;
-      index = this.has(key);
-      if (index != null) {
-        if (index <= this.position) {
-          return this.removals.push(key);
-        } else {
-          this.queue.splice(index, 1);
-          return this.buffer();
-        }
-      }
+      return this.removals.push(key);
     };
     Controller.prototype.buffer = function() {
       if (this.queue.length >= this.buffer_size) {
@@ -214,7 +214,7 @@
       }
     };
     Controller.prototype.reset = function() {
-      var addition, index, key, queued, _i, _j, _k, _len, _len2, _len3, _ref, _ref2, _ref3, _results;
+      var addition, index, key, queued, _i, _j, _k, _len, _len2, _len3, _ref, _ref2, _ref3;
       $("#guide").fadeIn(750);
       $("#announcements").html('').css('left', 0);
       this.position = -1;
@@ -237,13 +237,14 @@
         }
       }
       _ref3 = this.removals;
-      _results = [];
       for (_k = 0, _len3 = _ref3.length; _k < _len3; _k++) {
         key = _ref3[_k];
         index = this.has(key);
-        _results.push(index != null ? this.queue.splice(index, 1) : void 0);
+        if (index != null) {
+          this.queue.splice(index, 1);
+        }
       }
-      return _results;
+      return this.buffer();
     };
     Controller.prototype.is_all_day = function(item) {
       if (item['start_time'].getHours() !== 0 || item['start_time'].getMinutes() !== 0) {
@@ -380,11 +381,13 @@
       }
     };
     Views.prototype.render = function(position, data) {
-      var item, key, output;
+      var item, key, output, screenHeight, screenWidth;
       key = data['key'].replace(/:/, '_');
       item = data['item'];
+      screenWidth = $(window).width();
+      screenHeight = $(window).height();
       output = '\
-    <article id="' + key + '" style="opacity: 0;left:' + (this.screenWidth * (position + 1) + 18) + 'px;width: ' + (this.screenWidth - 36) + 'px;height: ' + (this.screenHeight - 36) + 'px;">\
+    <article id="' + key + '" style="opacity: 0;left:' + (screenWidth * (position + 1) + 18) + 'px;width: ' + (screenWidth - 36) + 'px;height: ' + (screenHeight - 36) + 'px;">\
       ' + ((item['images'] != null) && (item['images'][0] != null) ? '<img src="' + item['images'][0].url + '" alt="' + item['images'][0].alt + '" />' : '') + '\
       <div>\
         <h2 class="when' + this.day_css(item['start_time']) + '">\
@@ -394,9 +397,7 @@
         <h3 class="what">\
           <span class="title">' + item['title'] + '</span>\
         </h3>\
-        <h4 class="where">\
-          <span class="location">' + item['location'] + '</span>\
-        </h4>\
+        ' + (item['location'] != null ? '<h4 class="where"><span class="location">' + item['location'] + '</span></h4>' : '') + '\
         <p class="extra-details">\
           ' + ((item['repeat'] != null) && (item['repeat']['next_start_time'] != null) ? '<span class="repeats_next">' + item['repeat']['next_start_time'] + '</span>' : '') + '\
         </p>\
@@ -404,7 +405,7 @@
         <h4 class="contact">\
           <span class="school">' + item['group']['school'] + '</span>\
           <span class="group">' + item['group']['name'] + '</span>\
-          ' + '<span class="link">' + (item['qrcode'] != null ? item['qrcode'] : item['link']).replace(/^http(s?):\/\/(www)?\./i, '').replace(/\/(\d+)-?[a-z\-]+$/i, '/$1') + (item['qrcode'] != null ? '<img src="' + item['qrcode'] + '.qrcode" alt="QR Code" />' : '') + '</span>\
+          ' + '<span class="link">' + (item['qrcode'] != null ? item['qrcode'].replace(/\.qrcode$/, '') : item['link']).replace(/^http(s?):\/\/(www)?\./i, '').replace(/\/(\d+)-?[a-z\-]+$/i, '/$1') + (item['qrcode'] != null ? '<img src="' + (item['qrcode'].match(/\.qrcode$/) ? item['qrcode'] : "" + item['qrcode'] + ".qrcode") + '" alt="QR Code" />' : '') + '</span>\
         </h4>\
       </div>\
     </article>';
@@ -415,7 +416,7 @@
         opacity: 0
       }, 500);
       return $("#announcements").animate({
-        left: '-=' + this.screenWidth
+        left: '-=' + screenWidth
       }, 1500, 'easeInOutBack');
     };
     return Views;
@@ -424,11 +425,7 @@
   
   TO DO - Short Term
   
-  1) create sockets speed adjust
-  
   2) Make dashboard
-  
-  3) Hand push content to on.lclark.edu
   
   6) Handle Locations Better
   
@@ -438,7 +435,16 @@
   
   #) image height limit
   
-  #) check failed ids: 6519, 6537, 6534, 6533, 6530
+  #) check failed ids: 6519, 6537, 6534, 6533, 6530, 6521, 6528
+  
+  #) check failed api suck? 6746
+  
+  #) rewrite is_test_screen to use screens['test']
+  
+  #) switching time with title
+  
+  #) remove image failures
+  
   
   TO DO - Long Term
   
