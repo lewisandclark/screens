@@ -21,23 +21,25 @@ class Filter
     object = @
     if update['is_deleted'] or update['is_removed']
       @livewhale_event.delete update['object_id']
-      @remove_from_screens update['object'], update['object_id']
+      @remove_from_screens "#{update['object']}:#{update['object_id']}"
+      @remove_from_timeline "#{update['object']}:#{update['object_id']}"
     else
       livewhale_api = new @livewhale_api
       livewhale_api.on 'success',
         (type, parsed) ->
           item = new object["livewhale_#{nounInflector.singularize(type)}"] parsed
-          item.on 'save_success',
-            (stored) ->
-              return if item['properties']['qrcode']?
-              if parsed['status'] isnt 1
-                object.remove_from_screens(@)
-                object.remove_from_timeline(@)
-              else
+          if item['properties']['status'] isnt 1
+            object.remove_from_screens(item)
+            object.remove_from_timeline(item)
+            item.delete()
+          else
+            item.on 'save_success',
+              (stored) ->
+                return if item['properties']['qrcode']?
                 object.push_to_screens(@)
                 object.push_to_timeline(@)
                 object.get_qrcode(@)
-          item.save()
+            item.save()
       livewhale_api.collect update['object'], update['object_id']
 
   push_to_screens: (item) ->
@@ -64,13 +66,14 @@ class Filter
     qrcode.generate item['properties']['link']
 
   remove_from_screens: (item) ->
-    @io.sockets.volatile.emit 'remove', { key: item.key() }
+    @io.sockets.volatile.emit 'remove', { key: (if typeof item is 'string' then item else item.key()) }
 
   remove_from_timeline: (item) ->
     db = new @db
+    key = (if typeof item is 'string' then item else item.key())
     try
-      db.remove_from_sorted_set("timeline:#{channel}", item.key()) for channel in item['properties']['channels']
+      db.remove_from_sorted_set("timeline:#{channel}", key) for channel in item['properties']['channels']
     catch e
-      @error e, "unable to remove #{item.key()} from timeline(s)", 'Filter.remove_from_timeline'
+      @error e, "unable to remove #{key} from timeline(s)", 'Filter.remove_from_timeline'
 
 module.exports = Filter

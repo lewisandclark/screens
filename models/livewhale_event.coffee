@@ -76,12 +76,11 @@ class LiveWhaleEvent
     catch e
       @error e, "unable to save #{@type} #{@properties['id']}", 'LiveWhaleEvent.save'
 
-  delete: (id=null) -> # delete parents too?
+  delete: (id=null) ->
     object = @
     db = new @db
     try
       id = @properties['id'] if id is null
-      console.log "ID: #{id}"
       db.on 'del_success',
         (type, id) ->
           object.emit('delete_success', type, id) if object['_events']? and object['_events']['delete_success']?
