@@ -18,6 +18,7 @@
         start_time: "(Date.parse(this.properties[property]) > 0)",
         places: "(typeof this.properties[property] === 'object' && this.properties[property].length > 0 && typeof this.properties[property][0]['id'] === 'number' && parseInt(this.properties[property][0]['id']) === this.properties[property][0]['id'] && this.properties[property][0]['id'] > 0)"
       };
+      delete parsed_data['description'];
       this.properties = parsed_data;
       this.set_channels();
     }
@@ -46,19 +47,52 @@
     LiveWhaleEvent.prototype.is_authoritative = function() {
       return env.authoritative_sources.indexOf(this.properties['group']['id']) >= 0;
     };
+    LiveWhaleEvent.prototype.is_institutional = function() {
+      return env.institutional.indexOf(this.properties['group']['school']) >= 0;
+    };
     LiveWhaleEvent.prototype.set_channels = function() {
-      var channel, criteria, _ref, _results;
+      var channel, criteria, directional_tag, directional_tags, tag, _ref, _ref2, _results, _results2;
       if (this.properties['group'] === null) {
         return [];
       }
       this.properties['channels'] = [];
-      _ref = env.channels;
-      _results = [];
-      for (channel in _ref) {
-        criteria = _ref[channel];
-        _results.push(criteria.schools.indexOf(this.properties['group']['school']) >= 0 || criteria.group_ids.indexOf(this.properties['group']['id']) >= 0 ? this.properties['channels'].push(channel) : void 0);
+      if (this.is_institutional()) {
+        directional_tags = (function() {
+          var _i, _len, _ref, _results;
+          _ref = this.properties['tags'];
+          _results = [];
+          for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+            tag = _ref[_i];
+            if (env.directional_tags.indexOf(tag) >= 0) {
+              _results.push(tag);
+            }
+          }
+          return _results;
+        }).call(this);
+        _ref = env.channels;
+        _results = [];
+        for (channel in _ref) {
+          criteria = _ref[channel];
+          _results.push((function() {
+            var _i, _len, _results2;
+            _results2 = [];
+            for (_i = 0, _len = directional_tags.length; _i < _len; _i++) {
+              directional_tag = directional_tags[_i];
+              _results2.push(criteria.tags.indexOf(directional_tag) >= 0 && !this.properties['channels'].indexOf(channel) >= 0 ? this.properties['channels'].push(channel) : void 0);
+            }
+            return _results2;
+          }).call(this));
+        }
+        return _results;
+      } else {
+        _ref2 = env.channels;
+        _results2 = [];
+        for (channel in _ref2) {
+          criteria = _ref2[channel];
+          _results2.push(criteria.schools.indexOf(this.properties['group']['school']) >= 0 || criteria.group_ids.indexOf(this.properties['group']['id']) >= 0 ? this.properties['channels'].push(channel) : void 0);
+        }
+        return _results2;
       }
-      return _results;
     };
     LiveWhaleEvent.prototype.valid = function() {
       var property, test, _ref;
