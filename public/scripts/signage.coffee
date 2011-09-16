@@ -74,6 +74,9 @@ class Controller
       @seconds = seconds
       clearInterval @interval
       @interval = setInterval("document.signage.controller.next()", (@seconds * 1000))
+
+  stop: () ->
+    clearInterval @interval
   
   has: (key) ->
     for queued, index in @queue
@@ -143,7 +146,7 @@ class Controller
     @removals.push key
 
   buffer: () ->
-    return if @queue.length >= @buffer_size
+    return if @queue.length >= @buffer_size - 10
     @socket.emit 'items', { count: (@buffer_size - @queue.length) }
 
   begin: () ->
@@ -169,11 +172,13 @@ class Controller
       if index?
         @queue.splice(index, 0, addition)
         @qrcodify(addition['key'], addition['item']['link']) if (not addition['item']['qrcode']?)
+    @additions = []
     for queued in @queue
       @removals.push(queued['key']) if @is_past(queued['item'])
     for key in @removals
       index = @has(key)
       @queue.splice(index, 1) if index?
+    @removals = []
     @buffer()
 
   is_all_day: (item) ->
@@ -344,6 +349,8 @@ TO DO - Short Term
 #) switching time with title
 
 #) remove image failures
+
+#) kill interval before reload
 
 
 TO DO - Long Term

@@ -73,6 +73,9 @@
         return this.interval = setInterval("document.signage.controller.next()", this.seconds * 1000);
       }
     };
+    Controller.prototype.stop = function() {
+      return clearInterval(this.interval);
+    };
     Controller.prototype.has = function(key) {
       var index, queued, _len, _ref;
       _ref = this.queue;
@@ -190,7 +193,7 @@
       return this.removals.push(key);
     };
     Controller.prototype.buffer = function() {
-      if (this.queue.length >= this.buffer_size) {
+      if (this.queue.length >= this.buffer_size - 10) {
         return;
       }
       return this.socket.emit('items', {
@@ -229,6 +232,7 @@
           }
         }
       }
+      this.additions = [];
       _ref2 = this.queue;
       for (_j = 0, _len2 = _ref2.length; _j < _len2; _j++) {
         queued = _ref2[_j];
@@ -244,6 +248,7 @@
           this.queue.splice(index, 1);
         }
       }
+      this.removals = [];
       return this.buffer();
     };
     Controller.prototype.is_all_day = function(item) {
@@ -444,6 +449,8 @@
   #) switching time with title
   
   #) remove image failures
+  
+  #) kill interval before reload
   
   
   TO DO - Long Term
