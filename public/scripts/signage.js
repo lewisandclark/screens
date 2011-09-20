@@ -46,7 +46,7 @@
       this.removals = [];
       this.interval = null;
       this.timeout = null;
-      this.seconds = 10;
+      this.seconds = 7;
     }
     Controller.prototype.running = function() {
       if (this.interval != null) {
@@ -391,8 +391,18 @@
     Views.prototype.location_for = function(item) {
       return item['location'];
     };
+    Views.prototype.has_summary = function(item) {
+      var summary;
+      summary = this.summary_for(item);
+      return (summary != null) && (summary.length != null) && summary.length > 0;
+    };
     Views.prototype.summary_for = function(item) {
-      return item['summary'];
+      var summary;
+      summary = item['summary'].replace(/(<([^>]+)>)/ig, ' ').replace('&#160;', ' ').replace(/^\s+|\s+$/, '').replace(/\s+/, ' ');
+      if (summary.length > 290) {
+        return "" + (summary.substr(0, summary.lastIndexOf(' ', 290))) + " &hellip;";
+      }
+      return summary;
     };
     Views.prototype.render = function(position, data) {
       var item, key, output, screenHeight, screenWidth;
@@ -415,7 +425,7 @@
         <p class="extra-details">\
           ' + ((item['repeat'] != null) && (item['repeat']['next_start_time'] != null) ? '<span class="repeats_next">' + item['repeat']['next_start_time'] + '</span>' : '') + '\
         </p>\
-        ' + ((this.summary_for(item) != null) && this.summary_for(item).length > 0 ? '<div class="about"><p>' + this.summary_for(item).replace(/(<([^>]+)>)/ig, ' ') + '</p></div>' : '') + '\
+        ' + (this.has_summary(item) ? '<div class="about"><p>' + this.summary_for(item) + '</p></div>' : '') + '\
         <h4 class="contact">\
           <span class="school">' + item['group']['school'] + '</span>\
           <span class="group">' + item['group']['name'] + '</span>\

@@ -54,7 +54,7 @@ class Controller
     @removals = []
     @interval = null
     @timeout = null
-    @seconds = 10
+    @seconds = 7
 
   running: () ->
     return true if @interval?
@@ -291,16 +291,14 @@ class Views
   location_for: (item) ->
     item['location']
 
+  has_summary: (item) ->
+    summary = @summary_for(item)
+    (summary? and summary.length? and summary.length > 0)
+
   summary_for: (item) ->
-    #summary = item['summary'].replace(/(<([^>]+)>)/ig
-    #if summary.length > 300
-    #  eos = summary.indexOf('. ', 0)
-    #  while eos isnt -1 and eos < 300
-    #    eos = summary.indexOf('. ', (eos+1))
-    #  if eos isnt -1
-    #    summary.substring(0,eos)
-    #summary
-    item['summary']
+    summary = item['summary'].replace(/(<([^>]+)>)/ig, ' ').replace('&#160;', ' ').replace(/^\s+|\s+$/, '').replace(/\s+/, ' ')
+    return "#{summary.substr(0, summary.lastIndexOf(' ', 290))} &hellip;" if summary.length > 290
+    summary
 
   render: (position, data) ->
     key = data['key'].replace(/:/, '_')
@@ -322,7 +320,7 @@ class Views
         <p class="extra-details">
           ' + (if item['repeat']? and item['repeat']['next_start_time']? then '<span class="repeats_next">' + item['repeat']['next_start_time'] + '</span>' else '') + '
         </p>
-        ' + (if @summary_for(item)? and @summary_for(item).length > 0 then '<div class="about"><p>' + @summary_for(item).replace(/(<([^>]+)>)/ig, ' ') + '</p></div>' else '') + '
+        ' + (if @has_summary(item) then '<div class="about"><p>' + @summary_for(item) + '</p></div>' else '') + '
         <h4 class="contact">
           <span class="school">' + item['group']['school'] + '</span>
           <span class="group">' + item['group']['name'] + '</span>
