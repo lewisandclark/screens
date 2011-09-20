@@ -264,6 +264,7 @@ class Views
     return "Midnight" if @is_midnight(d)
     return "Noon" if @is_noon(d)
     return "#{(d.getHours() - 12)}:#{@pad(d.getMinutes())}#{(if meridian then ' p.m.' else '')}" if d.getHours() > 12
+    return "#{d.getHours()}:#{@pad(d.getMinutes())}#{(if meridian then ' p.m.' else '')}" if d.getHours() is 12
     "#{d.getHours()}:#{@pad(d.getMinutes())}#{(if meridian then ' a.m.' else '')}"
 
   is_midnight: (d) ->
@@ -287,6 +288,20 @@ class Views
       return 'All Day' if @is_midnight(item['start_time'])
       @format_time(item['start_time'])
 
+  location_for: (item) ->
+    item['location']
+
+  summary_for: (item) ->
+    #summary = item['summary'].replace(/(<([^>]+)>)/ig
+    #if summary.length > 300
+    #  eos = summary.indexOf('. ', 0)
+    #  while eos isnt -1 and eos < 300
+    #    eos = summary.indexOf('. ', (eos+1))
+    #  if eos isnt -1
+    #    summary.substring(0,eos)
+    #summary
+    item['summary']
+
   render: (position, data) ->
     key = data['key'].replace(/:/, '_')
     item = data['item']
@@ -303,11 +318,11 @@ class Views
         <h3 class="what">
           <span class="title">' + item['title'] + '</span>
         </h3>
-        ' + (if item['location']? then '<h4 class="where"><span class="location">' + item['location'] + '</span></h4>' else '') + '
+        ' + (if @location_for(item)? then '<h4 class="where"><span class="location">' + @location_for(item) + '</span></h4>' else '') + '
         <p class="extra-details">
           ' + (if item['repeat']? and item['repeat']['next_start_time']? then '<span class="repeats_next">' + item['repeat']['next_start_time'] + '</span>' else '') + '
         </p>
-        ' + (if item['summary']? and item['summary'].length > 0 then '<div class="about"><p>' + item['summary'].replace(/(<([^>]+)>)/ig, ' ') + '</p></div>' else '') + '
+        ' + (if @summary_for(item)? and @summary_for(item).length > 0 then '<div class="about"><p>' + @summary_for(item).replace(/(<([^>]+)>)/ig, ' ') + '</p></div>' else '') + '
         <h4 class="contact">
           <span class="school">' + item['group']['school'] + '</span>
           <span class="group">' + item['group']['name'] + '</span>

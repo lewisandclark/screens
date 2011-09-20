@@ -357,6 +357,9 @@
       if (d.getHours() > 12) {
         return "" + (d.getHours() - 12) + ":" + (this.pad(d.getMinutes())) + (meridian ? ' p.m.' : '');
       }
+      if (d.getHours() === 12) {
+        return "" + (d.getHours()) + ":" + (this.pad(d.getMinutes())) + (meridian ? ' p.m.' : '');
+      }
       return "" + (d.getHours()) + ":" + (this.pad(d.getMinutes())) + (meridian ? ' a.m.' : '');
     };
     Views.prototype.is_midnight = function(d) {
@@ -385,6 +388,12 @@
         return this.format_time(item['start_time']);
       }
     };
+    Views.prototype.location_for = function(item) {
+      return item['location'];
+    };
+    Views.prototype.summary_for = function(item) {
+      return item['summary'];
+    };
     Views.prototype.render = function(position, data) {
       var item, key, output, screenHeight, screenWidth;
       key = data['key'].replace(/:/, '_');
@@ -402,11 +411,11 @@
         <h3 class="what">\
           <span class="title">' + item['title'] + '</span>\
         </h3>\
-        ' + (item['location'] != null ? '<h4 class="where"><span class="location">' + item['location'] + '</span></h4>' : '') + '\
+        ' + (this.location_for(item) != null ? '<h4 class="where"><span class="location">' + this.location_for(item) + '</span></h4>' : '') + '\
         <p class="extra-details">\
           ' + ((item['repeat'] != null) && (item['repeat']['next_start_time'] != null) ? '<span class="repeats_next">' + item['repeat']['next_start_time'] + '</span>' : '') + '\
         </p>\
-        ' + ((item['summary'] != null) && item['summary'].length > 0 ? '<div class="about"><p>' + item['summary'].replace(/(<([^>]+)>)/ig, ' ') + '</p></div>' : '') + '\
+        ' + ((this.summary_for(item) != null) && this.summary_for(item).length > 0 ? '<div class="about"><p>' + this.summary_for(item).replace(/(<([^>]+)>)/ig, ' ') + '</p></div>' : '') + '\
         <h4 class="contact">\
           <span class="school">' + item['group']['school'] + '</span>\
           <span class="group">' + item['group']['name'] + '</span>\
