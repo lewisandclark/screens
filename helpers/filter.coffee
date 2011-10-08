@@ -43,7 +43,7 @@ class Filter
       livewhale_api.collect update['object'], update['object_id']
 
   push_to_screens: (item) ->
-    @io.sockets.volatile.emit 'update', { key: item.key(), item: JSON.stringify(item['properties']) }
+    @io.sockets.emit 'update', { key: item.key(), item: JSON.stringify(item['properties']) }
 
   push_to_timeline: (item) ->
     db = new @db

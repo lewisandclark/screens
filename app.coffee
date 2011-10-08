@@ -46,12 +46,17 @@ io.sockets.on 'connection',
         retrieve.get_lead_member(data['count'])
     socket.on 'impression',
       (data) ->
-        dashboard.capture(data)
+        dashboard.capture(data) if not data['screen']['test']
         true
     socket.on 'error',
       (data) ->
         console.log "error from #{data['screen']['name']}"
         console.log data['error']
+    socket.on 'log',
+      (data) ->
+        console.log "log from #{data['screen']['name']}"
+        console.log data['log']
+    true
 
 
 # SSL App

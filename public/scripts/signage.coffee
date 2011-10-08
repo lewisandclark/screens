@@ -47,14 +47,17 @@ class Controller
     @socket = socket
     @views = views
     @queue = []
-    @buffer_size = 30
+    @min_buffer_size = 10
+    @max_buffer_size = 20
+    @range = (12 * 24 * 60 * 60 * 1000) # 12 days
     @screen = {}
     @position = 0
     @additions = []
     @removals = []
     @interval = null
     @timeout = null
-    @seconds = 7
+    @seconds = (if window.location.href.match(/\:3000/) then 2 else 9)
+    @blocked = false
 
   running: () ->
     return true if @interval?
@@ -116,11 +119,16 @@ class Controller
     return true if item['channels'].indexOf(@screen['channel']) >= 0
     false
 
+  is_in_range: (item) ->
+    d = new Date()
+    return true if item['start_time'].getTime() < d.getTime() + @range
+    false
+
   insert_index: (data) ->
     return 0 if @queue.length is 0
     for queued, index in @queue
       return index if data['item']['start_time'].getTime() < queued['item']['start_time'].getTime()
-    return @queue.length if @queue.length < @buffer_size
+    return @queue.length if @queue.length < @max_buffer_size
     null
 
   update: (data) ->
@@ -131,14 +139,13 @@ class Controller
       if exists?
         @queue[exists] = data
         @qrcodify(data['key'], data['item']['link']) if (not data['item']['qrcode']?)
-      else if @is_live(data['item']) and @has_matching_channel(data['item'])
+      else if @is_live(data['item']) and @has_matching_channel(data['item']) and @is_in_range(data['item'])
         if !@running()
           @queue.push data
           @qrcodify(data['key'], data['item']['link']) if (not data['item']['qrcode']?)
         else
           @additions.push data
       @timeout = setTimeout("document.signage.controller.begin()", (@seconds * 1000)) if !@running() and !@waiting()
-      # @begin() if !@running() # and !@waiting()
     catch e
       console.log e
 
@@ -146,8 +153,8 @@ class Controller
     @removals.push key
 
   buffer: () ->
-    return if @queue.length >= @buffer_size - 10
-    @socket.emit 'items', { count: (@buffer_size - @queue.length) }
+    return if @queue.length >= @max_buffer_size
+    @socket.emit 'items', { count: (@max_buffer_size - @queue.length) }
 
   begin: () ->
     $("#guide").fadeOut(750)
@@ -163,23 +170,59 @@ class Controller
     else
       @render()
 
+  refresh_queue: () ->
+    if @additions.length > 0 or @removals.length > 0
+      @blocked = true
+      if @removals.length > 0
+        new_queue = []
+        @socket.emit 'log', { screen: @screen, log: "refresh_queue: removals length #{@removals.length}" }
+        for key in @removals
+          index = @has(key)
+          if index?
+            for i in [0..@queue.length-1]
+              if i isnt index
+                new_queue.push $.extend({}, item[i])
+        @queue = $.extend(true, [], new_queue)
+        @removals = []
+      if @additions.length > 0
+        new_queue = []
+        @socket.emit 'log', { screen: @screen, log: "refresh_queue: additions length #{@additions.length}" }
+        for addition in @additions
+          index = @insert_index(addition)
+          if index?
+            for i in [0..@queue.length]
+              if i < index
+                new_queue.push $.extend({}, item[i])
+              else if i is index
+                new_queue.push addition
+              else
+                new_queue.push $.extend({}, item[i-1])
+            @qrcodify(addition['key'], addition['item']['link']) if (not addition['item']['qrcode']?)
+        @queue = $.extend(true, [], new_queue)
+        @additions = []
+      @blocked = false
+
   reset: () ->
     $("#guide").fadeIn(750)
     $("#announcements").html('').css('left', 0)
     @position = -1
     for addition in @additions
-      index = @insert_index(addition)
-      if index?
-        @queue.splice(index, 0, addition)
-        @qrcodify(addition['key'], addition['item']['link']) if (not addition['item']['qrcode']?)
+      exists = @has(addition['key'])
+      if exists is null
+        index = @insert_index(addition)
+        if index?
+          @queue.splice(index, 0, addition)
+          @qrcodify(addition['key'], addition['item']['link']) if (not addition['item']['qrcode']?)
     @additions = []
     for queued in @queue
       @removals.push(queued['key']) if @is_past(queued['item'])
+      @removals.push(queued['key']) if not @is_in_range(queued['item'])
     for key in @removals
       index = @has(key)
       @queue.splice(index, 1) if index?
+    @buffer() if @removals.length > 0 or @queue.length < @min_buffer_size
     @removals = []
-    @buffer()
+    # @refresh_queue()
 
   is_all_day: (item) ->
     return false if item['start_time'].getHours() isnt 0 or item['start_time'].getMinutes() isnt 0
@@ -246,7 +289,7 @@ class Views
 
   is_this_week: (d) ->
     now = new Date()
-    ((d.getTime() - now.getTime()) < 604800000)
+    ((d.getTime() - now.getTime()) < (6 * 24 * 60 * 60 * 1000))
 
   day_css: (d) ->
     return '' if not @is_this_week(d)
@@ -343,27 +386,17 @@ class Views
 
 TO DO - Short Term
 
-2) Make dashboard
-
 6) Handle Locations Better
 
 7) Show attendance tags
 
-9) Truncate summary.
-
 #) image height limit
-
-#) check failed ids: 6519, 6537, 6534, 6533, 6530, 6521, 6528
-
-#) check failed api suck? 6746
-
-#) rewrite is_test_screen to use screens['test']
 
 #) switching time with title
 
-#) remove image failures
-
 #) kill interval before reload
+
+#) lowercase titles if uppercase
 
 
 TO DO - Long Term

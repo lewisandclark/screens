@@ -39,14 +39,17 @@
       this.socket = socket;
       this.views = views;
       this.queue = [];
-      this.buffer_size = 30;
+      this.min_buffer_size = 10;
+      this.max_buffer_size = 20;
+      this.range = 12 * 24 * 60 * 60 * 1000;
       this.screen = {};
       this.position = 0;
       this.additions = [];
       this.removals = [];
       this.interval = null;
       this.timeout = null;
-      this.seconds = 7;
+      this.seconds = (window.location.href.match(/\:3000/) ? 2 : 9);
+      this.blocked = false;
     }
     Controller.prototype.running = function() {
       if (this.interval != null) {
@@ -144,6 +147,14 @@
       }
       return false;
     };
+    Controller.prototype.is_in_range = function(item) {
+      var d;
+      d = new Date();
+      if (item['start_time'].getTime() < d.getTime() + this.range) {
+        return true;
+      }
+      return false;
+    };
     Controller.prototype.insert_index = function(data) {
       var index, queued, _len, _ref;
       if (this.queue.length === 0) {
@@ -156,7 +167,7 @@
           return index;
         }
       }
-      if (this.queue.length < this.buffer_size) {
+      if (this.queue.length < this.max_buffer_size) {
         return this.queue.length;
       }
       return null;
@@ -172,7 +183,7 @@
           if (!(data['item']['qrcode'] != null)) {
             this.qrcodify(data['key'], data['item']['link']);
           }
-        } else if (this.is_live(data['item']) && this.has_matching_channel(data['item'])) {
+        } else if (this.is_live(data['item']) && this.has_matching_channel(data['item']) && this.is_in_range(data['item'])) {
           if (!this.running()) {
             this.queue.push(data);
             if (!(data['item']['qrcode'] != null)) {
@@ -193,11 +204,11 @@
       return this.removals.push(key);
     };
     Controller.prototype.buffer = function() {
-      if (this.queue.length >= this.buffer_size - 10) {
+      if (this.queue.length >= this.max_buffer_size) {
         return;
       }
       return this.socket.emit('items', {
-        count: this.buffer_size - this.queue.length
+        count: this.max_buffer_size - this.queue.length
       });
     };
     Controller.prototype.begin = function() {
@@ -216,19 +227,78 @@
         return this.render();
       }
     };
+    Controller.prototype.refresh_queue = function() {
+      var addition, i, index, key, new_queue, _i, _j, _len, _len2, _ref, _ref2, _ref3, _ref4;
+      if (this.additions.length > 0 || this.removals.length > 0) {
+        this.blocked = true;
+        if (this.removals.length > 0) {
+          new_queue = [];
+          this.socket.emit('log', {
+            screen: this.screen,
+            log: "refresh_queue: removals length " + this.removals.length
+          });
+          _ref = this.removals;
+          for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+            key = _ref[_i];
+            index = this.has(key);
+            if (index != null) {
+              for (i = 0, _ref2 = this.queue.length - 1; 0 <= _ref2 ? i <= _ref2 : i >= _ref2; 0 <= _ref2 ? i++ : i--) {
+                if (i !== index) {
+                  new_queue.push($.extend({}, item[i]));
+                }
+              }
+            }
+          }
+          this.queue = $.extend(true, [], new_queue);
+          this.removals = [];
+        }
+        if (this.additions.length > 0) {
+          new_queue = [];
+          this.socket.emit('log', {
+            screen: this.screen,
+            log: "refresh_queue: additions length " + this.additions.length
+          });
+          _ref3 = this.additions;
+          for (_j = 0, _len2 = _ref3.length; _j < _len2; _j++) {
+            addition = _ref3[_j];
+            index = this.insert_index(addition);
+            if (index != null) {
+              for (i = 0, _ref4 = this.queue.length; 0 <= _ref4 ? i <= _ref4 : i >= _ref4; 0 <= _ref4 ? i++ : i--) {
+                if (i < index) {
+                  new_queue.push($.extend({}, item[i]));
+                } else if (i === index) {
+                  new_queue.push(addition);
+                } else {
+                  new_queue.push($.extend({}, item[i - 1]));
+                }
+              }
+              if (!(addition['item']['qrcode'] != null)) {
+                this.qrcodify(addition['key'], addition['item']['link']);
+              }
+            }
+          }
+          this.queue = $.extend(true, [], new_queue);
+          this.additions = [];
+        }
+        return this.blocked = false;
+      }
+    };
     Controller.prototype.reset = function() {
-      var addition, index, key, queued, _i, _j, _k, _len, _len2, _len3, _ref, _ref2, _ref3;
+      var addition, exists, index, key, queued, _i, _j, _k, _len, _len2, _len3, _ref, _ref2, _ref3;
       $("#guide").fadeIn(750);
       $("#announcements").html('').css('left', 0);
       this.position = -1;
       _ref = this.additions;
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         addition = _ref[_i];
-        index = this.insert_index(addition);
-        if (index != null) {
-          this.queue.splice(index, 0, addition);
-          if (!(addition['item']['qrcode'] != null)) {
-            this.qrcodify(addition['key'], addition['item']['link']);
+        exists = this.has(addition['key']);
+        if (exists === null) {
+          index = this.insert_index(addition);
+          if (index != null) {
+            this.queue.splice(index, 0, addition);
+            if (!(addition['item']['qrcode'] != null)) {
+              this.qrcodify(addition['key'], addition['item']['link']);
+            }
           }
         }
       }
@@ -237,6 +307,9 @@
       for (_j = 0, _len2 = _ref2.length; _j < _len2; _j++) {
         queued = _ref2[_j];
         if (this.is_past(queued['item'])) {
+          this.removals.push(queued['key']);
+        }
+        if (!this.is_in_range(queued['item'])) {
           this.removals.push(queued['key']);
         }
       }
@@ -248,8 +321,10 @@
           this.queue.splice(index, 1);
         }
       }
-      this.removals = [];
-      return this.buffer();
+      if (this.removals.length > 0 || this.queue.length < this.min_buffer_size) {
+        this.buffer();
+      }
+      return this.removals = [];
     };
     Controller.prototype.is_all_day = function(item) {
       if (item['start_time'].getHours() !== 0 || item['start_time'].getMinutes() !== 0) {
@@ -318,7 +393,7 @@
     Views.prototype.is_this_week = function(d) {
       var now;
       now = new Date();
-      return (d.getTime() - now.getTime()) < 604800000;
+      return (d.getTime() - now.getTime()) < (6 * 24 * 60 * 60 * 1000);
     };
     Views.prototype.day_css = function(d) {
       if (!this.is_this_week(d)) {
@@ -449,27 +524,17 @@
   
   TO DO - Short Term
   
-  2) Make dashboard
-  
   6) Handle Locations Better
   
   7) Show attendance tags
   
-  9) Truncate summary.
-  
   #) image height limit
-  
-  #) check failed ids: 6519, 6537, 6534, 6533, 6530, 6521, 6528
-  
-  #) check failed api suck? 6746
-  
-  #) rewrite is_test_screen to use screens['test']
   
   #) switching time with title
   
-  #) remove image failures
-  
   #) kill interval before reload
+  
+  #) lowercase titles if uppercase
   
   
   TO DO - Long Term

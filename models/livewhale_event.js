@@ -10,13 +10,34 @@
       this.db = require(__dirname + '/../helpers/db');
       this.type = 'events';
       this.validations = {
-        id: "(typeof this.properties[property] === 'number' && parseInt(this.properties[property]) === this.properties[property] && this.properties[property] > 0)",
-        title: "(typeof this.properties[property] === 'string' && this.properties[property].length > 0)",
-        summary: "(typeof this.properties[property] === 'string' && this.properties[property].length > 0)",
-        group: "(typeof this.properties[property] === 'object' && typeof this.properties[property]['id'] === 'number' && parseInt(this.properties[property]['id']) === this.properties[property]['id'] && this.properties[property]['id'] > 0)",
-        link: "(typeof this.properties[property] === 'string' && this.properties[property].length > 0)",
-        start_time: "(Date.parse(this.properties[property]) > 0)",
-        places: "(typeof this.properties[property] === 'object' && this.properties[property].length > 0 && typeof this.properties[property][0]['id'] === 'number' && parseInt(this.properties[property][0]['id']) === this.properties[property][0]['id'] && this.properties[property][0]['id'] > 0)"
+        id: {
+          test: "(typeof this.properties[property] === 'number' && parseInt(this.properties[property]) === this.properties[property] && this.properties[property] > 0)",
+          message: "id is not an integer"
+        },
+        title: {
+          test: "(typeof this.properties[property] === 'string' && this.properties[property].length > 0)",
+          message: "title is empty"
+        },
+        summary: {
+          test: "(typeof this.properties[property] === 'string' && this.properties[property].length > 0)",
+          message: "summary is empty"
+        },
+        group: {
+          test: "(typeof this.properties[property] === 'object' && typeof this.properties[property]['id'] === 'number' && parseInt(this.properties[property]['id']) === this.properties[property]['id'] && this.properties[property]['id'] > 0)",
+          message: "group is empty or not formed properly"
+        },
+        link: {
+          test: "(typeof this.properties[property] === 'string' && this.properties[property].length > 0)",
+          message: "link is empty"
+        },
+        start_time: {
+          test: "(Date.parse(this.properties[property]) > 0)",
+          message: "start_time is empty or not a date/time"
+        },
+        places: {
+          test: "(typeof this.properties[property] === 'object' && this.properties[property].length > 0 && typeof this.properties[property][0]['id'] === 'number' && parseInt(this.properties[property][0]['id']) === this.properties[property][0]['id'] && this.properties[property][0]['id'] > 0)",
+          message: "places is empty or not formed properly"
+        }
       };
       delete parsed_data['description'];
       this.properties = parsed_data;
@@ -94,26 +115,21 @@
         return _results2;
       }
     };
-    LiveWhaleEvent.prototype.valid = function() {
-      var property, test, _ref;
+    LiveWhaleEvent.prototype.save = function() {
+      var db, object, property, validation, _ref;
       _ref = this.validations;
       for (property in _ref) {
-        test = _ref[property];
-        if (!eval(test)) {
+        validation = _ref[property];
+        if (!eval(validation['test'])) {
+          this.error("validation failed for " + (this.key()), validation['message'], 'LiveWhaleEvent.save.validate');
           return false;
         }
-      }
-      return true;
-    };
-    LiveWhaleEvent.prototype.save = function() {
-      var db, object;
-      if (!this.valid()) {
-        return this.error("validation failed", "unable to meet validation checks for " + this.properties, 'LiveWhaleEvent.save');
       }
       object = this;
       db = new this.db;
       try {
         db.on('set_success', function(stored) {
+          console.log(stored);
           if ((object['_events'] != null) && (object['_events']['save_success'] != null)) {
             return object.emit('save_success', stored);
           }

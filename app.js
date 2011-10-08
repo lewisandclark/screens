@@ -54,13 +54,20 @@
       return retrieve.get_lead_member(data['count']);
     });
     socket.on('impression', function(data) {
-      dashboard.capture(data);
+      if (!data['screen']['test']) {
+        dashboard.capture(data);
+      }
       return true;
     });
-    return socket.on('error', function(data) {
+    socket.on('error', function(data) {
       console.log("error from " + data['screen']['name']);
       return console.log(data['error']);
     });
+    socket.on('log', function(data) {
+      console.log("log from " + data['screen']['name']);
+      return console.log(data['log']);
+    });
+    return true;
   });
   appSSL.get('/', function(req, res) {
     return res.redirect('http://on.lclark.edu');
