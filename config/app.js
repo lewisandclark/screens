@@ -1,8 +1,9 @@
 (function() {
-  var app, env, express, fs;
+  var app, browserify, env, express, fs;
   express = require('express');
   fs = require('fs');
   env = require(__dirname + '/env');
+  browserify = require('browserify');
   app = express.createServer();
   app.configure(function() {
     app.set('host', 'on.lclark.edu');
@@ -12,7 +13,11 @@
     app.use(express.methodOverride());
     app.use(express.cookieParser());
     app.use(app.router);
-    return app.use(express.static(__dirname + '/../public'));
+    app.use(express.static(__dirname + '/../public'));
+    return app.use(browserify({
+      mount: '/browserify.js',
+      require: __dirname + '/../helpers/string'
+    }));
   });
   app.configure('development', function() {
     app.set('port', env.ports.dev);

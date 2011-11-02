@@ -3,6 +3,7 @@
   $(document).ready(function() {
     var controller, socket, views;
     $("#guide").fadeIn(750);
+    require('./string');
     socket = io.connect(window.location);
     views = new Views();
     controller = new Controller(socket, views);
@@ -79,19 +80,40 @@
     Controller.prototype.stop = function() {
       return clearInterval(this.interval);
     };
-    Controller.prototype.has = function(key) {
-      var index, queued, _len, _ref;
-      _ref = this.queue;
-      for (index = 0, _len = _ref.length; index < _len; index++) {
-        queued = _ref[index];
+    Controller.prototype.has = function(key, queue) {
+      var index, queued, _len;
+      if (queue == null) {
+        queue = this.queue;
+      }
+      for (index = 0, _len = queue.length; index < _len; index++) {
+        queued = queue[index];
         if (key === queued['key']) {
           return index;
         }
       }
       return null;
     };
+    Controller.prototype.is_dst = function(d) {
+      var day, dst_end, dst_start, year;
+      year = d.getFullYear();
+      dst_start = new Date("March 14, " + year + " 02:00:00");
+      dst_end = new Date("November 07, " + year + " 02:00:00");
+      day = dst_start.getDay();
+      dst_start.setDate(14 - day);
+      day = dst_end.getDay();
+      dst_end.setDate(7 - day);
+      if (d >= dst_start && d < dst_end) {
+        return true;
+      }
+      return false;
+    };
     Controller.prototype.date = function(value) {
-      return new Date(Date.parse(value));
+      var d;
+      d = new Date(Date.parse(value));
+      if (!this.is_dst(d)) {
+        d.setTime(d.getTime() + (60 * 60 * 1000));
+      }
+      return d;
     };
     Controller.prototype.datify = function(item) {
       var property, value;
@@ -173,7 +195,7 @@
       return null;
     };
     Controller.prototype.update = function(data) {
-      var exists;
+      var exists, index;
       try {
         data['item'] = JSON.parse(data['item']);
         data['item'] = this.datify(data['item']);
@@ -190,7 +212,12 @@
               this.qrcodify(data['key'], data['item']['link']);
             }
           } else {
-            this.additions.push(data);
+            index = this.has(data['key'], this.additions);
+            if (index != null) {
+              this.additions[index] = data;
+            } else {
+              this.additions.push(data);
+            }
           }
         }
         if (!this.running() && !this.waiting()) {
@@ -300,6 +327,8 @@
               this.qrcodify(addition['key'], addition['item']['link']);
             }
           }
+        } else {
+          this.queue[exists] = addition;
         }
       }
       this.additions = [];
@@ -321,7 +350,7 @@
           this.queue.splice(index, 1);
         }
       }
-      if (this.removals.length > 0 || this.queue.length < this.min_buffer_size) {
+      if (this.removals.length > 0) {
         this.buffer();
       }
       return this.removals = [];
@@ -494,7 +523,7 @@
           <span class="time">' + this.time_for(item) + '</span>\
         </h2>\
         <h3 class="what">\
-          <span class="title">' + item['title'] + '</span>\
+          <span class="title">' + item['title'].toTitleCaps() + '</span>\
         </h3>\
         ' + (this.location_for(item) != null ? '<h4 class="where"><span class="location">' + this.location_for(item) + '</span></h4>' : '') + '\
         <p class="extra-details">\
@@ -520,35 +549,4 @@
     };
     return Views;
   })();
-  /*
-  
-  TO DO - Short Term
-  
-  6) Handle Locations Better
-  
-  7) Show attendance tags
-  
-  #) image height limit
-  
-  #) switching time with title
-  
-  #) kill interval before reload
-  
-  #) lowercase titles if uppercase
-  
-  
-  TO DO - Long Term
-  
-  1) filtering tests
-    i) date change
-    ii) authority relationship
-    iii) live status change
-    iv) parent filtering
-    v) duplicate filtering
-  
-  2) Push needs to handle image-only changes
-  
-  3) Push needs to test if an update no longer matches the subscription, send is_removed
-  
-  */
 }).call(this);

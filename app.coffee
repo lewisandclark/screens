@@ -13,7 +13,6 @@ helpers =
   retrieve: require __dirname + '/helpers/retrieve'
   dashboard: require __dirname + '/helpers/dashboard'
 
-
 # App
 app.get '/',
   (req, res) ->

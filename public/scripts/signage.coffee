@@ -3,6 +3,7 @@ $(document).ready ->
 
   $("#guide").fadeIn(750)
 
+  require './string'
   socket = io.connect window.location
   views = new Views()
   controller = new Controller(socket, views)
@@ -81,13 +82,26 @@ class Controller
   stop: () ->
     clearInterval @interval
   
-  has: (key) ->
-    for queued, index in @queue
+  has: (key, queue = @queue) ->
+    for queued, index in queue
       return index if key is queued['key']
     null
 
+  is_dst: (d) -> # from: http://www.mresoftware.com/simpleDST.htm
+    year = d.getFullYear()
+    dst_start = new Date("March 14, #{year} 02:00:00") # 2nd Sunday in March can't occur after the 14th 
+    dst_end = new Date("November 07, #{year} 02:00:00") # 1st Sunday in November can't occur after the 7th
+    day = dst_start.getDay() # day of week of 14th
+    dst_start.setDate(14 - day) # Calculate 2nd Sunday in March of year in question
+    day = dst_end.getDay() # day of the week of 7th
+    dst_end.setDate(7 - day) # Calculate first Sunday in November of year in question
+    return true if d >= dst_start and d < dst_end # does today fall inside of DST period?
+    false
+
   date: (value) ->
-    new Date(Date.parse(value))
+    d = new Date(Date.parse(value))
+    d.setTime(d.getTime() + (60 * 60 * 1000)) if not @is_dst(d)
+    d
 
   datify: (item) ->
     for property, value of item
@@ -144,7 +158,11 @@ class Controller
           @queue.push data
           @qrcodify(data['key'], data['item']['link']) if (not data['item']['qrcode']?)
         else
-          @additions.push data
+          index = @has(data['key'], @additions)
+          if index?
+            @additions[index] = data
+          else
+            @additions.push data
       @timeout = setTimeout("document.signage.controller.begin()", (@seconds * 1000)) if !@running() and !@waiting()
     catch e
       console.log e
@@ -213,6 +231,8 @@ class Controller
         if index?
           @queue.splice(index, 0, addition)
           @qrcodify(addition['key'], addition['item']['link']) if (not addition['item']['qrcode']?)
+      else
+        @queue[exists] = addition
     @additions = []
     for queued in @queue
       @removals.push(queued['key']) if @is_past(queued['item'])
@@ -220,7 +240,7 @@ class Controller
     for key in @removals
       index = @has(key)
       @queue.splice(index, 1) if index?
-    @buffer() if @removals.length > 0 or @queue.length < @min_buffer_size
+    @buffer() if @removals.length > 0 # or @queue.length < @min_buffer_size
     @removals = []
     # @refresh_queue()
 
@@ -357,7 +377,7 @@ class Views
           <span class="time">' + @time_for(item) + '</span>
         </h2>
         <h3 class="what">
-          <span class="title">' + item['title'] + '</span>
+          <span class="title">' + item['title'].toTitleCaps() + '</span>
         </h3>
         ' + (if @location_for(item)? then '<h4 class="where"><span class="location">' + @location_for(item) + '</span></h4>' else '') + '
         <p class="extra-details">
@@ -380,36 +400,3 @@ class Views
     $("#announcements").animate({
       left: '-=' + screenWidth
     }, 1500, 'easeInOutBack')
-
-
-###
-
-TO DO - Short Term
-
-6) Handle Locations Better
-
-7) Show attendance tags
-
-#) image height limit
-
-#) switching time with title
-
-#) kill interval before reload
-
-#) lowercase titles if uppercase
-
-
-TO DO - Long Term
-
-1) filtering tests
-  i) date change
-  ii) authority relationship
-  iii) live status change
-  iv) parent filtering
-  v) duplicate filtering
-
-2) Push needs to handle image-only changes
-
-3) Push needs to test if an update no longer matches the subscription, send is_removed
-
-###
