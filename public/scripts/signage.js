@@ -93,33 +93,14 @@
       }
       return null;
     };
-    Controller.prototype.is_dst = function(d) {
-      var day, dst_end, dst_start, year;
-      year = d.getFullYear();
-      dst_start = new Date("March 14, " + year + " 02:00:00");
-      dst_end = new Date("November 07, " + year + " 02:00:00");
-      day = dst_start.getDay();
-      dst_start.setDate(14 - day);
-      day = dst_end.getDay();
-      dst_end.setDate(7 - day);
-      if (d >= dst_start && d < dst_end) {
-        return true;
-      }
-      return false;
-    };
     Controller.prototype.date = function(value) {
-      var d;
-      d = new Date(Date.parse(value));
-      if (!this.is_dst(d)) {
-        d.setTime(d.getTime() + (60 * 60 * 1000));
-      }
-      return d;
+      return new Date(Date.parse(value));
     };
     Controller.prototype.datify = function(item) {
       var property, value;
       for (property in item) {
         value = item[property];
-        if (typeof value === 'string' && value.match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z/)) {
+        if (typeof value === 'string' && value.match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[\+\-]{1}\d{2}:\d{2}/)) {
           item[property] = this.date(value);
         }
       }

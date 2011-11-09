@@ -87,25 +87,12 @@ class Controller
       return index if key is queued['key']
     null
 
-  is_dst: (d) -> # from: http://www.mresoftware.com/simpleDST.htm
-    year = d.getFullYear()
-    dst_start = new Date("March 14, #{year} 02:00:00") # 2nd Sunday in March can't occur after the 14th 
-    dst_end = new Date("November 07, #{year} 02:00:00") # 1st Sunday in November can't occur after the 7th
-    day = dst_start.getDay() # day of week of 14th
-    dst_start.setDate(14 - day) # Calculate 2nd Sunday in March of year in question
-    day = dst_end.getDay() # day of the week of 7th
-    dst_end.setDate(7 - day) # Calculate first Sunday in November of year in question
-    return true if d >= dst_start and d < dst_end # does today fall inside of DST period?
-    false
-
   date: (value) ->
-    d = new Date(Date.parse(value))
-    d.setTime(d.getTime() + (60 * 60 * 1000)) if not @is_dst(d)
-    d
+    new Date(Date.parse(value))
 
   datify: (item) ->
     for property, value of item
-      item[property] = @date(value) if typeof value is 'string' and value.match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z/)
+      item[property] = @date(value) if typeof value is 'string' and value.match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[\+\-]{1}\d{2}:\d{2}/)
     item
 
   qrcodify: (key, link) ->
