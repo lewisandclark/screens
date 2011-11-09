@@ -54,3 +54,11 @@ Thumbs.db
 *.pem
 *.key
 
+# NPM #
+#######
+node_modules
+
+# Application #
+###############
+env.coffee
+env.js
