@@ -51,6 +51,7 @@
       this.timeout = null;
       this.seconds = (window.location.href.match(/\:3000/) ? 2 : 9);
       this.blocked = false;
+      this.authoritative_sources = [3, 7, 9, 10, 11, 12, 35, 185, 220, 271, 273, 309, 323, 409];
     }
     Controller.prototype.running = function() {
       if (this.interval != null) {
@@ -79,6 +80,42 @@
     };
     Controller.prototype.stop = function() {
       return clearInterval(this.interval);
+    };
+    Controller.prototype.already_has = function(item, queue) {
+      var queued, _i, _len;
+      if (queue == null) {
+        queue = this.queue;
+      }
+      for (_i = 0, _len = queue.length; _i < _len; _i++) {
+        queued = queue[_i];
+        if (queued['item']['start_time'].getTime() !== item['start_time'].getTime()) {
+          continue;
+        }
+        if (queued['item']['places'][0]['id'] !== item['places'][0]['id']) {
+          continue;
+        }
+        if (queued['item']['title'] !== item['title']) {
+          continue;
+        }
+        if (item['parent_id'] !== null && item['parent_id'] === queued['item']['id']) {
+          return true;
+        }
+        if (queued['item']['parent_id'] !== null && queued['item']['parent_id'] === item['id']) {
+          console.log("" + queued['key'] + " needs to be removed");
+          return false;
+        }
+        if (this.authoritative_sources.indexOf(queued['item']['group']['id']) >= 0) {
+          return true;
+        }
+        if (this.authoritative_sources.indexOf(item['group']['id']) >= 0) {
+          console.log("" + queued['key'] + " needs to be removed");
+          return false;
+        }
+        console.log("title match " + item['title'] + "\ngroups: " + queued['item']['group']['id'] + ":" + queued['item']['group']['school'] + " " + queued['item']['group']['name'] + " versus " + item['group']['id'] + ":" + item['group']['school'] + " " + item['group']['name'] + "\n" + queued['item']['id'] + ":parent:" + queued['item']['parent_id'] + " versus " + item['id'] + ":parent:" + item['parent_id'] + "\n");
+        console.log("neither is authoritative, prefer FIFO");
+        return true;
+      }
+      return false;
     };
     Controller.prototype.has = function(key, queue) {
       var index, queued, _len;
@@ -187,7 +224,7 @@
             this.qrcodify(data['key'], data['item']['link']);
           }
         } else if (this.is_live(data['item']) && this.has_matching_channel(data['item']) && this.is_in_range(data['item'])) {
-          if (!this.running()) {
+          if (this.queue.length === 0) {
             this.queue.push(data);
             if (!(data['item']['qrcode'] != null)) {
               this.qrcodify(data['key'], data['item']['link']);
@@ -301,11 +338,13 @@
         addition = _ref[_i];
         exists = this.has(addition['key']);
         if (exists === null) {
-          index = this.insert_index(addition);
-          if (index != null) {
-            this.queue.splice(index, 0, addition);
-            if (!(addition['item']['qrcode'] != null)) {
-              this.qrcodify(addition['key'], addition['item']['link']);
+          if (!this.already_has(addition['item'])) {
+            index = this.insert_index(addition);
+            if (index != null) {
+              this.queue.splice(index, 0, addition);
+              if (!(addition['item']['qrcode'] != null)) {
+                this.qrcodify(addition['key'], addition['item']['link']);
+              }
             }
           }
         } else {

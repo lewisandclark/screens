@@ -59,6 +59,22 @@ class Controller
     @timeout = null
     @seconds = (if window.location.href.match(/\:3000/) then 2 else 9)
     @blocked = false
+    @authoritative_sources = [
+      3,    # Webadmins
+      7,    # Inst: Newsroom
+      9,    # Home: Lewis & Clark
+      10,   # Home: Law
+      11,   # Home: Graduate
+      12,   # Home: College
+      35,   # Inst: New Media
+      185,  # Inst: PubCom
+      220,  # Inst: Source
+      271,  # Home: Events
+      273,  # Inst: Chronicle
+      309,  # Home: Webcast
+      323,  # Inst: Lewis and Clark Magazine
+      409   # Inst: LiveWhale Support
+    ]
 
   running: () ->
     return true if @interval?
@@ -81,6 +97,26 @@ class Controller
 
   stop: () ->
     clearInterval @interval
+
+  already_has: (item, queue = @queue) ->
+    for queued in queue
+      continue if queued['item']['start_time'].getTime() isnt item['start_time'].getTime() # skip if start time does not match
+      continue if queued['item']['places'][0]['id'] isnt item['places'][0]['id'] # skip if in a different place
+      continue if queued['item']['title'] isnt item['title'] # skip if title does not match
+      return true if item['parent_id'] isnt null and item['parent_id'] is queued['item']['id'] # parent already present
+      if queued['item']['parent_id'] isnt null and queued['item']['parent_id'] is item['id'] # incoming parent replacing current
+        console.log "#{queued['key']} needs to be removed"
+        #@removals.push(queued['key'])
+        return false
+      return true if @authoritative_sources.indexOf(queued['item']['group']['id']) >= 0 # current item is authoritative
+      if @authoritative_sources.indexOf(item['group']['id']) >= 0 # incoming item is authoritative
+        console.log "#{queued['key']} needs to be removed"
+        #@removals.push(queued['key'])
+        return false
+      console.log "title match #{item['title']}\ngroups: #{queued['item']['group']['id']}:#{queued['item']['group']['school']} #{queued['item']['group']['name']} versus #{item['group']['id']}:#{item['group']['school']} #{item['group']['name']}\n#{queued['item']['id']}:parent:#{queued['item']['parent_id']} versus #{item['id']}:parent:#{item['parent_id']}\n"
+      console.log "neither is authoritative, prefer FIFO"
+      return true
+    false
   
   has: (key, queue = @queue) ->
     for queued, index in queue
@@ -141,7 +177,7 @@ class Controller
         @queue[exists] = data
         @qrcodify(data['key'], data['item']['link']) if (not data['item']['qrcode']?)
       else if @is_live(data['item']) and @has_matching_channel(data['item']) and @is_in_range(data['item'])
-        if !@running()
+        if @queue.length is 0
           @queue.push data
           @qrcodify(data['key'], data['item']['link']) if (not data['item']['qrcode']?)
         else
@@ -214,10 +250,11 @@ class Controller
     for addition in @additions
       exists = @has(addition['key'])
       if exists is null
-        index = @insert_index(addition)
-        if index?
-          @queue.splice(index, 0, addition)
-          @qrcodify(addition['key'], addition['item']['link']) if (not addition['item']['qrcode']?)
+        if not @already_has(addition['item'])
+          index = @insert_index(addition)
+          if index?
+            @queue.splice(index, 0, addition)
+            @qrcodify(addition['key'], addition['item']['link']) if (not addition['item']['qrcode']?)
       else
         @queue[exists] = addition
     @additions = []
