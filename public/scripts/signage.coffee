@@ -102,20 +102,16 @@ class Controller
     for queued in queue
       continue if queued['item']['start_time'].getTime() isnt item['start_time'].getTime() # skip if start time does not match
       continue if queued['item']['places'][0]['id'] isnt item['places'][0]['id'] # skip if in a different place
-      continue if queued['item']['title'] isnt item['title'] # skip if title does not match
+      continue if queued['item']['title'].similar(item['title'], true) < 85 # skip if title is not better than an 85% match
       return true if item['parent_id'] isnt null and item['parent_id'] is queued['item']['id'] # parent already present
       if queued['item']['parent_id'] isnt null and queued['item']['parent_id'] is item['id'] # incoming parent replacing current
-        console.log "#{queued['key']} needs to be removed"
-        #@removals.push(queued['key'])
+        @removals.push(queued['key'])
         return false
       return true if @authoritative_sources.indexOf(queued['item']['group']['id']) >= 0 # current item is authoritative
       if @authoritative_sources.indexOf(item['group']['id']) >= 0 # incoming item is authoritative
-        console.log "#{queued['key']} needs to be removed"
-        #@removals.push(queued['key'])
+        @removals.push(queued['key'])
         return false
-      console.log "title match #{item['title']}\ngroups: #{queued['item']['group']['id']}:#{queued['item']['group']['school']} #{queued['item']['group']['name']} versus #{item['group']['id']}:#{item['group']['school']} #{item['group']['name']}\n#{queued['item']['id']}:parent:#{queued['item']['parent_id']} versus #{item['id']}:parent:#{item['parent_id']}\n"
-      console.log "neither is authoritative, prefer FIFO"
-      return true
+      return true # neither is authoritative, prefer FIFO
     false
   
   has: (key, queue = @queue) ->
@@ -128,7 +124,7 @@ class Controller
 
   datify: (item) ->
     for property, value of item
-      item[property] = @date(value) if typeof value is 'string' and value.match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[\+\-]{1}\d{2}:\d{2}/)
+      item[property] = @date(value) if typeof value is 'string' and (value.match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[\+\-]{1}\d{2}:\d{2}/) or value.match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z/))
     item
 
   qrcodify: (key, link) ->
@@ -194,8 +190,9 @@ class Controller
     @removals.push key
 
   buffer: () ->
-    return if @queue.length >= @max_buffer_size
-    @socket.emit 'items', { count: (@max_buffer_size - @queue.length) }
+    return if @queue.length >= Math.floor(@max_buffer_size * 2 / 3)
+    @socket.emit 'items', { count: ((@max_buffer_size - @queue.length) * 3) }
+    true
 
   begin: () ->
     $("#guide").fadeOut(750)
@@ -210,38 +207,6 @@ class Controller
       @reset()
     else
       @render()
-
-  refresh_queue: () ->
-    if @additions.length > 0 or @removals.length > 0
-      @blocked = true
-      if @removals.length > 0
-        new_queue = []
-        @socket.emit 'log', { screen: @screen, log: "refresh_queue: removals length #{@removals.length}" }
-        for key in @removals
-          index = @has(key)
-          if index?
-            for i in [0..@queue.length-1]
-              if i isnt index
-                new_queue.push $.extend({}, item[i])
-        @queue = $.extend(true, [], new_queue)
-        @removals = []
-      if @additions.length > 0
-        new_queue = []
-        @socket.emit 'log', { screen: @screen, log: "refresh_queue: additions length #{@additions.length}" }
-        for addition in @additions
-          index = @insert_index(addition)
-          if index?
-            for i in [0..@queue.length]
-              if i < index
-                new_queue.push $.extend({}, item[i])
-              else if i is index
-                new_queue.push addition
-              else
-                new_queue.push $.extend({}, item[i-1])
-            @qrcodify(addition['key'], addition['item']['link']) if (not addition['item']['qrcode']?)
-        @queue = $.extend(true, [], new_queue)
-        @additions = []
-      @blocked = false
 
   reset: () ->
     $("#guide").fadeIn(750)
@@ -264,9 +229,11 @@ class Controller
     for key in @removals
       index = @has(key)
       @queue.splice(index, 1) if index?
-    @buffer() if @removals.length > 0 # or @queue.length < @min_buffer_size
+    if @queue.length > @max_buffer_size
+      @queue.splice(@max_buffer_size, (@queue.length - @max_buffer_size))
+    else
+      @buffer() if @removals.length > 0
     @removals = []
-    # @refresh_queue()
 
   is_all_day: (item) ->
     return false if item['start_time'].getHours() isnt 0 or item['start_time'].getMinutes() isnt 0
