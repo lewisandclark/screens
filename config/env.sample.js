@@ -51,7 +51,8 @@
       host: 'www.lclark.edu',
       path: '/api/v1',
       client_id: 'your-livewhale-client-id',
-      client_secret: 'your-livewhale-client-secret'
+      client_secret: 'your-livewhale-client-secret',
+      timeout: 30
     },
     screen_ips: (function() {
       var _results;

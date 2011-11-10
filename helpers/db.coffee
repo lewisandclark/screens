@@ -54,10 +54,9 @@ class Data
     catch e
       @error e, "could not set #{type} #{data['id']}", 'Data.set'
 
-  del: (type='events', id) ->
+  del: (key) ->
     object = @
     try
-      key = @content_key(type, id)
       @client.del key,
         (e, replies) ->
           if e?

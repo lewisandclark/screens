@@ -62,7 +62,7 @@ class LiveWhaleEvent
     (env.institutional.indexOf(@properties['group']['school']) >= 0)
 
   set_channels: () ->
-    return [] if @properties['group'] is null
+    return null if typeof @properties['group'] is 'undefined' or @properties['group'] is null
     @properties['channels'] = []
     if @is_institutional()
       directional_tags = (tag for tag in @properties['tags'] when env.directional_tags.indexOf(tag) >= 0)

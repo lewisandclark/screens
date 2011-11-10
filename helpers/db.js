@@ -74,14 +74,10 @@
         return this.error(e, "could not set " + type + " " + data['id'], 'Data.set');
       }
     };
-    Data.prototype.del = function(type, id) {
-      var key, object;
-      if (type == null) {
-        type = 'events';
-      }
+    Data.prototype.del = function(key) {
+      var object;
       object = this;
       try {
-        key = this.content_key(type, id);
         return this.client.del(key, function(e, replies) {
           if (e != null) {
             return object.error(e, "redis unable to delete " + key, 'Data.del.client');

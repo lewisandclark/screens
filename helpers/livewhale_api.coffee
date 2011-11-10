@@ -32,6 +32,7 @@ class LiveWhaleAPI
     req.on 'error',
       (e) ->
         object.error e, 'request error', 'LiveWhaleAPI.collect.https'
+    req.socket.setTimeout env.livewhale.timeout
     true
 
 module.exports = LiveWhaleAPI

@@ -15,19 +15,21 @@
     }
     Filter['prototype'] = new events.EventEmitter;
     Filter.prototype.process = function(update) {
-      var livewhale_api, object;
+      var item, livewhale_api, object;
       if (update == null) {
         update = {};
       }
       object = this;
       if (update['is_deleted'] || update['is_removed']) {
-        this.livewhale_event["delete"](update['object_id']);
+        item = new object["livewhale_" + (nounInflector.singularize(update['object']))]({
+          id: update['object_id']
+        });
+        item["delete"]();
         this.remove_from_screens("" + update['object'] + ":" + update['object_id']);
         return this.remove_from_timeline("" + update['object'] + ":" + update['object_id']);
       } else {
         livewhale_api = new this.livewhale_api;
         livewhale_api.on('success', function(type, parsed) {
-          var item;
           item = new object["livewhale_" + (nounInflector.singularize(type))](parsed);
           if (item['properties']['status'] !== 1) {
             object.remove_from_screens(item);
@@ -91,14 +93,14 @@
       });
     };
     Filter.prototype.remove_from_timeline = function(item) {
-      var channel, db, key, _i, _len, _ref, _results;
+      var channel, criteria, db, key, _len, _ref, _results;
       db = new this.db;
       key = (typeof item === 'string' ? item : item.key());
       try {
-        _ref = item['properties']['channels'];
+        _ref = env.channels;
         _results = [];
-        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-          channel = _ref[_i];
+        for (criteria = 0, _len = _ref.length; criteria < _len; criteria++) {
+          channel = _ref[criteria];
           _results.push(db.remove_from_sorted_set("timeline:" + channel, key));
         }
         return _results;

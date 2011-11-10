@@ -20,7 +20,8 @@ class Filter
   process: (update={}) ->
     object = @
     if update['is_deleted'] or update['is_removed']
-      @livewhale_event.delete update['object_id']
+      item = new object["livewhale_#{nounInflector.singularize(update['object'])}"] { id: update['object_id'] }
+      item.delete()
       @remove_from_screens "#{update['object']}:#{update['object_id']}"
       @remove_from_timeline "#{update['object']}:#{update['object_id']}"
     else
@@ -72,7 +73,7 @@ class Filter
     db = new @db
     key = (if typeof item is 'string' then item else item.key())
     try
-      db.remove_from_sorted_set("timeline:#{channel}", key) for channel in item['properties']['channels']
+      db.remove_from_sorted_set("timeline:#{channel}", key) for channel, criteria in env.channels
     catch e
       @error e, "unable to remove #{key} from timeline(s)", 'Filter.remove_from_timeline'
 

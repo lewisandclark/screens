@@ -46,6 +46,7 @@ module.exports =
     path: '/api/v1'
     client_id: 'your-livewhale-client-id'
     client_secret: 'your-livewhale-client-secret'
+    timeout: 30 # seconds
   screen_ips: (screen['ip'] for name, screen of screens)
   screens: screens
   authoritative_sources: [

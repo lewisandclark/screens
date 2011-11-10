@@ -42,6 +42,7 @@
       req.on('error', function(e) {
         return object.error(e, 'request error', 'LiveWhaleAPI.collect.https');
       });
+      req.socket.setTimeout(env.livewhale.timeout);
       return true;
     };
     return LiveWhaleAPI;

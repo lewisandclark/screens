@@ -73,8 +73,8 @@
     };
     LiveWhaleEvent.prototype.set_channels = function() {
       var channel, criteria, directional_tag, directional_tags, tag, _ref, _ref2, _results, _results2;
-      if (this.properties['group'] === null) {
-        return [];
+      if (typeof this.properties['group'] === 'undefined' || this.properties['group'] === null) {
+        return null;
       }
       this.properties['channels'] = [];
       if (this.is_institutional()) {
