@@ -48,8 +48,8 @@ class Controller
     @socket = socket
     @views = views
     @queue = []
-    @min_buffer_size = 10
     @max_buffer_size = 20
+    @min_buffer_size = Math.floor(@max_buffer_size / 5)
     @range = (12 * 24 * 60 * 60 * 1000) # 12 days
     @screen = {}
     @position = 0
@@ -152,17 +152,17 @@ class Controller
     return true if item['channels'].indexOf(@screen['channel']) >= 0
     false
 
-  is_in_range: (item) ->
+  range_index: () ->
     d = new Date()
-    return true if item['start_time'].getTime() < d.getTime() + @range
-    false
+    for queued, index in @queue
+      return index if queued['item']['start_time'].getTime() > d.getTime() + @range
+    @queue.length
 
   insert_index: (data) ->
     return 0 if @queue.length is 0
     for queued, index in @queue
       return index if data['item']['start_time'].getTime() < queued['item']['start_time'].getTime()
-    return @queue.length if @queue.length < @max_buffer_size
-    null
+    @queue.length
 
   update: (data) ->
     try
@@ -172,7 +172,7 @@ class Controller
       if exists?
         @queue[exists] = data
         @qrcodify(data['key'], data['item']['link']) if (not data['item']['qrcode']?)
-      else if @is_live(data['item']) and @has_matching_channel(data['item']) and @is_in_range(data['item'])
+      else if data['item'] isnt null and @is_live(data['item']) and @has_matching_channel(data['item'])
         if @queue.length is 0
           @queue.push data
           @qrcodify(data['key'], data['item']['link']) if (not data['item']['qrcode']?)
@@ -190,8 +190,8 @@ class Controller
     @removals.push key
 
   buffer: () ->
-    return if @queue.length >= Math.floor(@max_buffer_size * 2 / 3)
-    @socket.emit 'items', { count: ((@max_buffer_size - @queue.length) * 3) }
+    return if @queue.length >= @min_buffer_size * 4
+    @socket.emit 'items', { count: (@min_buffer_size * 4) }
     true
 
   begin: () ->
@@ -224,15 +224,19 @@ class Controller
         @queue[exists] = addition
     @additions = []
     for queued in @queue
-      @removals.push(queued['key']) if @is_past(queued['item'])
-      @removals.push(queued['key']) if not @is_in_range(queued['item'])
+      if @is_past(queued['item'])
+        @removals.push(queued['key'])
     for key in @removals
       index = @has(key)
       @queue.splice(index, 1) if index?
     if @queue.length > @max_buffer_size
       @queue.splice(@max_buffer_size, (@queue.length - @max_buffer_size))
-    else
-      @buffer() if @removals.length > 0
+    end_of_range = @range_index()
+    if end_of_range < @queue.length and end_of_range > @min_buffer_size
+      @queue.splice(end_of_range, (@queue.length - end_of_range))
+    else if end_of_range < @queue.length and @queue.length > @min_buffer_size
+      @queue.splice(@min_buffer_size, (@queue.length - @min_buffer_size))
+    @buffer() if @removals.length > 0 or @queue.length < @min_buffer_size
     @removals = []
 
   is_all_day: (item) ->

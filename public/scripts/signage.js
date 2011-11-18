@@ -40,8 +40,8 @@
       this.socket = socket;
       this.views = views;
       this.queue = [];
-      this.min_buffer_size = 10;
       this.max_buffer_size = 20;
+      this.min_buffer_size = Math.floor(this.max_buffer_size / 5);
       this.range = 12 * 24 * 60 * 60 * 1000;
       this.screen = {};
       this.position = 0;
@@ -185,13 +185,17 @@
       }
       return false;
     };
-    Controller.prototype.is_in_range = function(item) {
-      var d;
+    Controller.prototype.range_index = function() {
+      var d, index, queued, _len, _ref;
       d = new Date();
-      if (item['start_time'].getTime() < d.getTime() + this.range) {
-        return true;
+      _ref = this.queue;
+      for (index = 0, _len = _ref.length; index < _len; index++) {
+        queued = _ref[index];
+        if (queued['item']['start_time'].getTime() > d.getTime() + this.range) {
+          return index;
+        }
       }
-      return false;
+      return this.queue.length;
     };
     Controller.prototype.insert_index = function(data) {
       var index, queued, _len, _ref;
@@ -205,10 +209,7 @@
           return index;
         }
       }
-      if (this.queue.length < this.max_buffer_size) {
-        return this.queue.length;
-      }
-      return null;
+      return this.queue.length;
     };
     Controller.prototype.update = function(data) {
       var exists, index;
@@ -221,7 +222,7 @@
           if (!(data['item']['qrcode'] != null)) {
             this.qrcodify(data['key'], data['item']['link']);
           }
-        } else if (this.is_live(data['item']) && this.has_matching_channel(data['item']) && this.is_in_range(data['item'])) {
+        } else if (data['item'] !== null && this.is_live(data['item']) && this.has_matching_channel(data['item'])) {
           if (this.queue.length === 0) {
             this.queue.push(data);
             if (!(data['item']['qrcode'] != null)) {
@@ -247,11 +248,11 @@
       return this.removals.push(key);
     };
     Controller.prototype.buffer = function() {
-      if (this.queue.length >= Math.floor(this.max_buffer_size * 2 / 3)) {
+      if (this.queue.length >= this.min_buffer_size * 4) {
         return;
       }
       this.socket.emit('items', {
-        count: (this.max_buffer_size - this.queue.length) * 3
+        count: this.min_buffer_size * 4
       });
       return true;
     };
@@ -272,7 +273,7 @@
       }
     };
     Controller.prototype.reset = function() {
-      var addition, exists, index, key, queued, _i, _j, _k, _len, _len2, _len3, _ref, _ref2, _ref3;
+      var addition, end_of_range, exists, index, key, queued, _i, _j, _k, _len, _len2, _len3, _ref, _ref2, _ref3;
       $("#guide").fadeIn(750);
       $("#announcements").html('').css('left', 0);
       this.position = -1;
@@ -301,9 +302,6 @@
         if (this.is_past(queued['item'])) {
           this.removals.push(queued['key']);
         }
-        if (!this.is_in_range(queued['item'])) {
-          this.removals.push(queued['key']);
-        }
       }
       _ref3 = this.removals;
       for (_k = 0, _len3 = _ref3.length; _k < _len3; _k++) {
@@ -315,10 +313,15 @@
       }
       if (this.queue.length > this.max_buffer_size) {
         this.queue.splice(this.max_buffer_size, this.queue.length - this.max_buffer_size);
-      } else {
-        if (this.removals.length > 0) {
-          this.buffer();
-        }
+      }
+      end_of_range = this.range_index();
+      if (end_of_range < this.queue.length && end_of_range > this.min_buffer_size) {
+        this.queue.splice(end_of_range, this.queue.length - end_of_range);
+      } else if (end_of_range < this.queue.length && this.queue.length > this.min_buffer_size) {
+        this.queue.splice(this.min_buffer_size, this.queue.length - this.min_buffer_size);
+      }
+      if (this.removals.length > 0 || this.queue.length < this.min_buffer_size) {
+        this.buffer();
       }
       return this.removals = [];
     };
