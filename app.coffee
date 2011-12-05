@@ -12,6 +12,7 @@ helpers =
   filter: require __dirname + '/helpers/filter'
   retrieve: require __dirname + '/helpers/retrieve'
   dashboard: require __dirname + '/helpers/dashboard'
+  sys_health: require __dirname + '/helpers/sys_health'
 
 # App
 app.get '/',

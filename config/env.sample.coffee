@@ -36,6 +36,21 @@ module.exports =
   redis:
     host: if process.env['REDIS_HOST']? then process.env['REDIS_HOST'] else '127.0.0.1'
     port: if process.env['REDIS_PORT']? then process.env['REDIS_PORT'] else 6379
+  health:
+    available_gb_ram: 0.512
+    actual_ram_threshold_percent: 30
+    virtual_ram_threshold_percent: 50
+    check_every_minutes: 5
+  mailer:
+    host: 'your.mail.server'
+    port: 25
+    domain: 'your.mail.server'
+    ssl: false
+    auth: 'login'
+    username: 'username'
+    password: 'password'
+    to: 'admin@your.server.tld'
+    from: 'admin@your.server.tld'
   bitly:
     host: 'api.bitly.com'
     path: '/v3/shorten'
