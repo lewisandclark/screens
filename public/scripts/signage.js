@@ -43,6 +43,7 @@
       this.max_buffer_size = 20;
       this.min_buffer_size = Math.floor(this.max_buffer_size / 5);
       this.range = 12 * 24 * 60 * 60 * 1000;
+      this.qr_cycles_wait = 30;
       this.screen = {};
       this.position = 0;
       this.additions = [];
@@ -150,12 +151,15 @@
         dataType: 'json',
         success: function(data, textStatus, jqXHR) {
           var index;
+          index = object.has(key);
           if ((data != null) && (data.data != null) && (data.data.url != null)) {
-            index = object.has(key);
             if (index != null) {
               return object.queue[index]['item']['qrcode'] = data.data.url;
             }
           } else if ((data != null) && (data.status_code != null) && (data.status_txt != null)) {
+            if (index != null) {
+              object.queue[index]['item']['qrcode_wait'] = object.qr_cycles_wait;
+            }
             return object.socket.emit('error', {
               screen: object.screen,
               error: "qrcodify.ajax.error: " + data.status_code + " " + data.status_txt
@@ -219,13 +223,13 @@
         exists = this.has(data['key']);
         if (exists != null) {
           this.queue[exists] = data;
-          if (!(data['item']['qrcode'] != null)) {
+          if ((!(data['item']['qrcode'] != null)) && (!(data['item']['qrcode_wait'] != null))) {
             this.qrcodify(data['key'], data['item']['link']);
           }
         } else if (data['item'] !== null && this.is_live(data['item']) && this.has_matching_channel(data['item'])) {
           if (this.queue.length === 0) {
             this.queue.push(data);
-            if (!(data['item']['qrcode'] != null)) {
+            if ((!(data['item']['qrcode'] != null)) && (!(data['item']['qrcode_wait'] != null))) {
               this.qrcodify(data['key'], data['item']['link']);
             }
           } else {
@@ -286,7 +290,7 @@
             index = this.insert_index(addition);
             if (index != null) {
               this.queue.splice(index, 0, addition);
-              if (!(addition['item']['qrcode'] != null)) {
+              if ((!(addition['item']['qrcode'] != null)) && (!(addition['item']['qrcode_wait'] != null))) {
                 this.qrcodify(addition['key'], addition['item']['link']);
               }
             }
@@ -355,6 +359,12 @@
       return false;
     };
     Controller.prototype.render = function() {
+      if (this.queue[this.position]['qrcode_wait'] != null) {
+        this.queue[this.position]['qrcode_wait'] -= 1;
+        if (this.queue[this.position]['qrcode_wait'] === 0) {
+          this.queue[this.position]['qrcode_wait'] = null;
+        }
+      }
       this.views.render(this.position, this.queue[this.position]);
       return this.socket.emit('impression', {
         screen: this.screen,

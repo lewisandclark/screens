@@ -51,6 +51,7 @@ class Controller
     @max_buffer_size = 20
     @min_buffer_size = Math.floor(@max_buffer_size / 5)
     @range = (12 * 24 * 60 * 60 * 1000) # 12 days
+    @qr_cycles_wait = 30
     @screen = {}
     @position = 0
     @additions = []
@@ -134,10 +135,11 @@ class Controller
       method: 'GET'
       dataType: 'json'
       success: (data, textStatus, jqXHR) ->
+        index = object.has(key)
         if data? and data.data? and data.data.url?
-          index = object.has(key)
           object.queue[index]['item']['qrcode'] = data.data.url if index?
         else if data? and data.status_code? and data.status_txt?
+          object.queue[index]['item']['qrcode_wait'] = object.qr_cycles_wait if index?
           object.socket.emit 'error', { screen: object.screen, error: "qrcodify.ajax.error: #{data.status_code} #{data.status_txt}" }
       error: (jqXHR, textStatus, errorThrown) ->
         object.socket.emit 'error', { screen: object.screen, error: "qrcodify.ajax.error: #{textStatus} #{errorThrown}" }
@@ -171,11 +173,11 @@ class Controller
       exists = @has(data['key'])
       if exists?
         @queue[exists] = data
-        @qrcodify(data['key'], data['item']['link']) if (not data['item']['qrcode']?)
+        @qrcodify(data['key'], data['item']['link']) if (not data['item']['qrcode']?) and (not data['item']['qrcode_wait']?)
       else if data['item'] isnt null and @is_live(data['item']) and @has_matching_channel(data['item'])
         if @queue.length is 0
           @queue.push data
-          @qrcodify(data['key'], data['item']['link']) if (not data['item']['qrcode']?)
+          @qrcodify(data['key'], data['item']['link']) if (not data['item']['qrcode']?) and (not data['item']['qrcode_wait']?)
         else
           index = @has(data['key'], @additions)
           if index?
@@ -219,7 +221,7 @@ class Controller
           index = @insert_index(addition)
           if index?
             @queue.splice(index, 0, addition)
-            @qrcodify(addition['key'], addition['item']['link']) if (not addition['item']['qrcode']?)
+            @qrcodify(addition['key'], addition['item']['link']) if (not addition['item']['qrcode']?) and (not addition['item']['qrcode_wait']?)
       else
         @queue[exists] = addition
     @additions = []
@@ -254,6 +256,9 @@ class Controller
     false
 
   render: () ->
+    if @queue[@position]['qrcode_wait']?
+      @queue[@position]['qrcode_wait'] -= 1
+      @queue[@position]['qrcode_wait'] = null if @queue[@position]['qrcode_wait'] is 0
     @views.render(@position, @queue[@position])
     @socket.emit 'impression', { screen: @screen, key: @queue[@position]['key'] }
 
