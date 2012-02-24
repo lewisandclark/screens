@@ -173,11 +173,11 @@ class Controller
       exists = @has(data['key'])
       if exists?
         @queue[exists] = data
-        @qrcodify(data['key'], data['item']['link']) if (not data['item']['qrcode']?) and (not data['item']['qrcode_wait']?)
+        ### @qrcodify(data['key'], data['item']['link']) if (not data['item']['qrcode']?) and (not data['item']['qrcode_wait']?) ###
       else if data['item'] isnt null and @is_live(data['item']) and @has_matching_channel(data['item'])
         if @queue.length is 0
           @queue.push data
-          @qrcodify(data['key'], data['item']['link']) if (not data['item']['qrcode']?) and (not data['item']['qrcode_wait']?)
+          ### @qrcodify(data['key'], data['item']['link']) if (not data['item']['qrcode']?) and (not data['item']['qrcode_wait']?) ###
         else
           index = @has(data['key'], @additions)
           if index?
@@ -221,7 +221,7 @@ class Controller
           index = @insert_index(addition)
           if index?
             @queue.splice(index, 0, addition)
-            @qrcodify(addition['key'], addition['item']['link']) if (not addition['item']['qrcode']?) and (not addition['item']['qrcode_wait']?)
+            ### @qrcodify(addition['key'], addition['item']['link']) if (not addition['item']['qrcode']?) and (not addition['item']['qrcode_wait']?) ###
       else
         @queue[exists] = addition
     @additions = []

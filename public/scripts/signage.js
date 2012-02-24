@@ -223,15 +223,11 @@
         exists = this.has(data['key']);
         if (exists != null) {
           this.queue[exists] = data;
-          if ((!(data['item']['qrcode'] != null)) && (!(data['item']['qrcode_wait'] != null))) {
-            this.qrcodify(data['key'], data['item']['link']);
-          }
+          /* @qrcodify(data['key'], data['item']['link']) if (not data['item']['qrcode']?) and (not data['item']['qrcode_wait']?) */
         } else if (data['item'] !== null && this.is_live(data['item']) && this.has_matching_channel(data['item'])) {
           if (this.queue.length === 0) {
             this.queue.push(data);
-            if ((!(data['item']['qrcode'] != null)) && (!(data['item']['qrcode_wait'] != null))) {
-              this.qrcodify(data['key'], data['item']['link']);
-            }
+            /* @qrcodify(data['key'], data['item']['link']) if (not data['item']['qrcode']?) and (not data['item']['qrcode_wait']?) */
           } else {
             index = this.has(data['key'], this.additions);
             if (index != null) {
@@ -290,9 +286,7 @@
             index = this.insert_index(addition);
             if (index != null) {
               this.queue.splice(index, 0, addition);
-              if ((!(addition['item']['qrcode'] != null)) && (!(addition['item']['qrcode_wait'] != null))) {
-                this.qrcodify(addition['key'], addition['item']['link']);
-              }
+              /* @qrcodify(addition['key'], addition['item']['link']) if (not addition['item']['qrcode']?) and (not addition['item']['qrcode_wait']?) */
             }
           }
         } else {
