@@ -56,6 +56,7 @@ class Retrieve
     object = @
     @db.on 'get_success',
       (item, key) ->
+        console.log "sending #{key} > #{obj.screen}"
         object.socket.emit 'update', { key: key, item: item }
     for member in members
       @db.get member

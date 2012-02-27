@@ -43,6 +43,7 @@ io.sockets.on 'connection',
     dashboard = new helpers.dashboard()
     socket.on 'items',
       (data) ->
+        console.log data
         retrieve.get_lead_member(data['count'])
     socket.on 'impression',
       (data) ->
