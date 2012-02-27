@@ -52,7 +52,7 @@
     retrieve = new helpers.retrieve(socket);
     dashboard = new helpers.dashboard();
     socket.on('items', function(data) {
-      console.log(data);
+      console.log("" + retieve.screen + " requesting " + data['count'] + " items");
       return retrieve.get_lead_member(data['count']);
     });
     socket.on('impression', function(data) {
