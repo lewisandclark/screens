@@ -78,7 +78,7 @@
       var member, object, _i, _len, _results;
       object = this;
       this.db.on('get_success', function(item, key) {
-        console.log("sending " + key + " > " + object.screen);
+        console.log("sending " + key + " > " + object.screen['name']);
         return object.socket.emit('update', {
           key: key,
           item: item
