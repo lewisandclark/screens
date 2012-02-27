@@ -24,40 +24,44 @@ class Retrieve
 
   get_lead_member: (count) ->
     object = @
-    @db.on 'get_from_sorted_set_success',
-      (members, key) ->
-        if members? and members.length > 0
-          object.get_starting_index members, count
-        else
-          object.socket.emit 'empty', { channel: object.screen['channel'] }
+    if @db.listeners('get_from_sorted_set_success').length is 0
+      @db.on 'get_from_sorted_set_success',
+        (members, key) ->
+          if members? and members.length > 0
+            object.get_starting_index members, count
+          else
+            object.socket.emit 'empty', { channel: object.screen['channel'] }
     @db.get_from_sorted_set("timeline:#{@screen['channel']}", (new Date()).getTime(), "+inf")
     
   get_starting_index: (members, count) ->
     object = @
-    @db.on 'get_index_of_sorted_set_item_success',
-      (index, key) ->
-        if index? and index >= 0
-          object.get_items index, count
-        else
-          object.socket.emit 'error', { error: "could not get index for lead member", method: "Retrieve.get_items" }
+    if @db.listeners('get_index_of_sorted_set_item_success').length is 0
+      @db.on 'get_index_of_sorted_set_item_success',
+        (index, key) ->
+          if index? and index >= 0
+            object.get_items index, count
+          else
+            object.socket.emit 'error', { error: "could not get index for lead member", method: "Retrieve.get_items" }
     @db.get_index_of_sorted_set_item("timeline:#{@screen['channel']}", members[0])
 
   get_items: (index, count) ->
     object = @
-    @db.on 'get_from_sorted_set_by_index_success',
-      (members, key) ->
-        if members? and members.length > 0
-          object.push members
-        else
-          object.socket.emit 'error', { error: "could not get index ", method: "Retrieve.get_items" }
+    if @db.listeners('get_from_sorted_set_by_index_success').length is 0
+      @db.on 'get_from_sorted_set_by_index_success',
+        (members, key) ->
+          if members? and members.length > 0
+            object.push members
+          else
+            object.socket.emit 'error', { error: "could not get index ", method: "Retrieve.get_items" }
     @db.get_from_sorted_set_by_index("timeline:#{@screen['channel']}", index, (index + count))
   
   push: (members) ->
     object = @
-    @db.on 'get_success',
-      (item, key) ->
-        console.log "sending #{key} > #{object.screen['name']}"
-        object.socket.emit 'update', { key: key, item: item }
+    if @db.listeners('get_success').length is 0
+      @db.on 'get_success',
+        (item, key) ->
+          console.log "sending #{key} > #{object.screen['name']}"
+          object.socket.emit 'update', { key: key, item: item }
     for member in members
       @db.get member
 
