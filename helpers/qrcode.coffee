@@ -35,14 +35,12 @@ class QRCode
             if parsed? and parsed.data? and parsed.data.url?
               object.emit('success', "#{parsed.data.url}.qrcode") if object['_events']? and object['_events']['success']?
             else
-              object.retry(url, size)
               object.error e, "unable to find qrcode for #{url}; data: #{data}", 'QRCode.generate.request'
           catch e
             object.retry(url, size)
             object.error e, "unable to parse qrcode for #{url}; data: #{data}", 'QRCode.generate.request'
     req.on 'error',
       (e) ->
-        object.retry(url, size)
         object.error e, "unable to request qrcode for #{url}; options: #{options}", 'QRCode.generate'
     true
 

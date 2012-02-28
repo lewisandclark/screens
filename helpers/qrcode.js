@@ -45,7 +45,6 @@
                 return object.emit('success', "" + parsed.data.url + ".qrcode");
               }
             } else {
-              object.retry(url, size);
               return object.error(e, "unable to find qrcode for " + url + "; data: " + data, 'QRCode.generate.request');
             }
           } catch (e) {
@@ -55,7 +54,6 @@
         });
       });
       req.on('error', function(e) {
-        object.retry(url, size);
         return object.error(e, "unable to request qrcode for " + url + "; options: " + options, 'QRCode.generate');
       });
       return true;
