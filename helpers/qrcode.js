@@ -6,6 +6,7 @@
   env = require(__dirname + '/../config/env');
   QRCode = (function() {
     function QRCode() {
+      this.waiting = null;
       this.error = require(__dirname + '/error');
     }
     QRCode['prototype'] = new events.EventEmitter;
@@ -44,17 +45,26 @@
                 return object.emit('success', "" + parsed.data.url + ".qrcode");
               }
             } else {
+              object.retry(url, size);
               return object.error(e, "unable to find qrcode for " + url + "; data: " + data, 'QRCode.generate.request');
             }
           } catch (e) {
+            object.retry(url, size);
             return object.error(e, "unable to parse qrcode for " + url + "; data: " + data, 'QRCode.generate.request');
           }
         });
       });
       req.on('error', function(e) {
+        object.retry(url, size);
         return object.error(e, "unable to request qrcode for " + url + "; options: " + options, 'QRCode.generate');
       });
       return true;
+    };
+    QRCode.prototype.retry = function(url, size) {
+      var object;
+      clearTimeout(this.waiting);
+      object = this;
+      return setTimeout(function(){object.generate(url, size);}, env.bitly.retry_every_minutes * 60 * 1000);
     };
     return QRCode;
   })();

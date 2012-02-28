@@ -56,6 +56,7 @@ module.exports =
     path: '/v3/shorten'
     account: 'lcweblab'
     api_key: 'your bitly api key'
+    retry_every_minutes: 15 # minutes
   livewhale:
     host: 'www.lclark.edu'
     path: '/api/v1'
