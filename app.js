@@ -52,7 +52,6 @@
     retrieve = new helpers.retrieve(socket);
     dashboard = new helpers.dashboard();
     socket.on('items', function(data) {
-      console.log("" + retrieve.screen['name'] + " requesting " + data['count'] + " items");
       return retrieve.get_lead_member(data['count']);
     });
     socket.on('impression', function(data) {

@@ -25,6 +25,7 @@ $(document).ready ->
 
   socket.on 'empty',
     (data) ->
+      document.signage.controller.last_buffer = false
       console.log 'empty received'
       console.log data
 
@@ -48,10 +49,12 @@ class Controller
     @socket = socket
     @views = views
     @queue = []
+    @maximum_buffer_frequency = (15 * 60) # 15 minutes in seconds
+    @buffered_at = 0
+    @buffer_scheduled = null
     @max_buffer_size = 20
     @min_buffer_size = Math.floor(@max_buffer_size / 5)
     @range = (12 * 24 * 60 * 60 * 1000) # 12 days
-    @qr_cycles_wait = 30
     @screen = {}
     @position = 0
     @additions = []
@@ -128,23 +131,6 @@ class Controller
       item[property] = @date(value) if typeof value is 'string' and (value.match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[\+\-]{1}\d{2}:\d{2}/) or value.match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z/))
     item
 
-  qrcodify: (key, link) ->
-    object = @
-    $.ajax({
-      url: 'http://api.bitly.com/v3/shorten?login=lcweblab&apiKey=R_6b2425f485649afae898025bcd17458d&longUrl=' + encodeURI(link) + '&format=json'
-      method: 'GET'
-      dataType: 'json'
-      success: (data, textStatus, jqXHR) ->
-        index = object.has(key)
-        if data? and data.data? and data.data.url?
-          object.queue[index]['item']['qrcode'] = data.data.url if index?
-        else if data? and data.status_code? and data.status_txt?
-          object.queue[index]['item']['qrcode_wait'] = object.qr_cycles_wait if index?
-          object.socket.emit 'error', { screen: object.screen, error: "qrcodify.ajax.error: #{data.status_code} #{data.status_txt}" }
-      error: (jqXHR, textStatus, errorThrown) ->
-        object.socket.emit 'error', { screen: object.screen, error: "qrcodify.ajax.error: #{textStatus} #{errorThrown}" }
-    })
-
   is_live: (item) ->
     return true if item['status'] is 1
     false
@@ -173,11 +159,9 @@ class Controller
       exists = @has(data['key'])
       if exists?
         @queue[exists] = data
-        ### @qrcodify(data['key'], data['item']['link']) if (not data['item']['qrcode']?) and (not data['item']['qrcode_wait']?) ###
       else if data['item'] isnt null and @is_live(data['item']) and @has_matching_channel(data['item'])
         if @queue.length is 0
           @queue.push data
-          ### @qrcodify(data['key'], data['item']['link']) if (not data['item']['qrcode']?) and (not data['item']['qrcode_wait']?) ###
         else
           index = @has(data['key'], @additions)
           if index?
@@ -191,10 +175,22 @@ class Controller
   remove: (key) ->
     @removals.push key
 
-  buffer: () ->
-    return if @queue.length >= @min_buffer_size * 4
-    @socket.emit 'items', { count: (@min_buffer_size * 4) }
-    true
+  buffer: ( seconds=@maximum_buffer_frequency ) ->
+    if @queue.length < @min_buffer_size
+      @socket.emit 'items', { count: (@min_buffer_size * 4) }
+    else
+      return false if @buffer_scheduled?
+      now = (new Date).getTime()
+      if now - @buffered_at < seconds * 1000
+        return @delay_buffering(((seconds * 1000) - (now - @buffered_at)) / 1000)
+      @buffered_at = now
+      return if @queue.length >= @min_buffer_size * 4
+      @socket.emit 'items', { count: (@min_buffer_size * 4) }
+
+  delay_buffering: ( seconds=@maximum_buffer_frequency ) ->
+    clearTimeout @buffer_scheduled
+    object = @
+    @buffer_scheduled = setTimeout(`function(){object.buffer_scheduled=null;object.buffer();}`, (seconds * 1000))
 
   begin: () ->
     $("#guide").fadeOut(750)
@@ -221,7 +217,6 @@ class Controller
           index = @insert_index(addition)
           if index?
             @queue.splice(index, 0, addition)
-            ### @qrcodify(addition['key'], addition['item']['link']) if (not addition['item']['qrcode']?) and (not addition['item']['qrcode_wait']?) ###
       else
         @queue[exists] = addition
     @additions = []

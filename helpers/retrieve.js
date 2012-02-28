@@ -85,7 +85,6 @@
       object = this;
       if (this.db.listeners('get_success').length === 0) {
         this.db.on('get_success', function(item, key) {
-          console.log("sending " + key + " > " + object.screen['name']);
           return object.socket.emit('update', {
             key: key,
             item: item

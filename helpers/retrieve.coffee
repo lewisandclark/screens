@@ -60,7 +60,6 @@ class Retrieve
     if @db.listeners('get_success').length is 0
       @db.on 'get_success',
         (item, key) ->
-          console.log "sending #{key} > #{object.screen['name']}"
           object.socket.emit 'update', { key: key, item: item }
     for member in members
       @db.get member

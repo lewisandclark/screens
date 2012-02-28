@@ -21,6 +21,7 @@
       return document.signage.controller.remove(data['key']);
     });
     socket.on('empty', function(data) {
+      document.signage.controller.last_buffer = false;
       console.log('empty received');
       return console.log(data);
     });
@@ -40,10 +41,12 @@
       this.socket = socket;
       this.views = views;
       this.queue = [];
+      this.maximum_buffer_frequency = 15 * 60;
+      this.buffered_at = 0;
+      this.buffer_scheduled = null;
       this.max_buffer_size = 20;
       this.min_buffer_size = Math.floor(this.max_buffer_size / 5);
       this.range = 12 * 24 * 60 * 60 * 1000;
-      this.qr_cycles_wait = 30;
       this.screen = {};
       this.position = 0;
       this.additions = [];
@@ -142,38 +145,6 @@
       }
       return item;
     };
-    Controller.prototype.qrcodify = function(key, link) {
-      var object;
-      object = this;
-      return $.ajax({
-        url: 'http://api.bitly.com/v3/shorten?login=lcweblab&apiKey=R_6b2425f485649afae898025bcd17458d&longUrl=' + encodeURI(link) + '&format=json',
-        method: 'GET',
-        dataType: 'json',
-        success: function(data, textStatus, jqXHR) {
-          var index;
-          index = object.has(key);
-          if ((data != null) && (data.data != null) && (data.data.url != null)) {
-            if (index != null) {
-              return object.queue[index]['item']['qrcode'] = data.data.url;
-            }
-          } else if ((data != null) && (data.status_code != null) && (data.status_txt != null)) {
-            if (index != null) {
-              object.queue[index]['item']['qrcode_wait'] = object.qr_cycles_wait;
-            }
-            return object.socket.emit('error', {
-              screen: object.screen,
-              error: "qrcodify.ajax.error: " + data.status_code + " " + data.status_txt
-            });
-          }
-        },
-        error: function(jqXHR, textStatus, errorThrown) {
-          return object.socket.emit('error', {
-            screen: object.screen,
-            error: "qrcodify.ajax.error: " + textStatus + " " + errorThrown
-          });
-        }
-      });
-    };
     Controller.prototype.is_live = function(item) {
       if (item['status'] === 1) {
         return true;
@@ -223,11 +194,9 @@
         exists = this.has(data['key']);
         if (exists != null) {
           this.queue[exists] = data;
-          /* @qrcodify(data['key'], data['item']['link']) if (not data['item']['qrcode']?) and (not data['item']['qrcode_wait']?) */
         } else if (data['item'] !== null && this.is_live(data['item']) && this.has_matching_channel(data['item'])) {
           if (this.queue.length === 0) {
             this.queue.push(data);
-            /* @qrcodify(data['key'], data['item']['link']) if (not data['item']['qrcode']?) and (not data['item']['qrcode_wait']?) */
           } else {
             index = this.has(data['key'], this.additions);
             if (index != null) {
@@ -247,14 +216,40 @@
     Controller.prototype.remove = function(key) {
       return this.removals.push(key);
     };
-    Controller.prototype.buffer = function() {
-      if (this.queue.length >= this.min_buffer_size * 4) {
-        return;
+    Controller.prototype.buffer = function(seconds) {
+      var now;
+      if (seconds == null) {
+        seconds = this.maximum_buffer_frequency;
       }
-      this.socket.emit('items', {
-        count: this.min_buffer_size * 4
-      });
-      return true;
+      if (this.queue.length < this.min_buffer_size) {
+        return this.socket.emit('items', {
+          count: this.min_buffer_size * 4
+        });
+      } else {
+        if (this.buffer_scheduled != null) {
+          return false;
+        }
+        now = (new Date).getTime();
+        if (now - this.buffered_at < seconds * 1000) {
+          return this.delay_buffering(((seconds * 1000) - (now - this.buffered_at)) / 1000);
+        }
+        this.buffered_at = now;
+        if (this.queue.length >= this.min_buffer_size * 4) {
+          return;
+        }
+        return this.socket.emit('items', {
+          count: this.min_buffer_size * 4
+        });
+      }
+    };
+    Controller.prototype.delay_buffering = function(seconds) {
+      var object;
+      if (seconds == null) {
+        seconds = this.maximum_buffer_frequency;
+      }
+      clearTimeout(this.buffer_scheduled);
+      object = this;
+      return this.buffer_scheduled = setTimeout(function(){object.buffer_scheduled=null;object.buffer();}, seconds * 1000);
     };
     Controller.prototype.begin = function() {
       $("#guide").fadeOut(750);
@@ -286,7 +281,6 @@
             index = this.insert_index(addition);
             if (index != null) {
               this.queue.splice(index, 0, addition);
-              /* @qrcodify(addition['key'], addition['item']['link']) if (not addition['item']['qrcode']?) and (not addition['item']['qrcode_wait']?) */
             }
           }
         } else {
