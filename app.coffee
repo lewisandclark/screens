@@ -35,6 +35,11 @@ app.get '/speed/:value',
     io.sockets.volatile.emit 'speed', { seconds: seconds }
     res.redirect 'http://on.lclark.edu'
 
+app.get '/channel/:channel',
+  (req, res) ->
+    console.log req.params.channel
+    res.render 'signage/index.jade', { layout: 'layouts/signage.jade', locals: { title: 'Lewis & Clark Campus Display System', digital_ts: '10029244356' } }
+
 app.listen(env.port)
 
 io.sockets.on 'connection',

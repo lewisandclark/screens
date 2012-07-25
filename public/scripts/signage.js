@@ -4,7 +4,7 @@
     var controller, socket, views;
     $("#guide").fadeIn(750);
     require('./string');
-    socket = io.connect(window.location);
+    socket = io.connect(window.location.origin);
     views = new Views();
     controller = new Controller(socket, views);
     document.signage = {

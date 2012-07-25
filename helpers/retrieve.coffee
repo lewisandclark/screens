@@ -20,6 +20,12 @@ class Retrieve
     return null if address is null
     for name, screen of env.screens
       return screen if screen['ip'] is address
+    re = new RegExp("^.*\\/channel\\/(#{(channel for channel, criteria of env.channels).join('|')})$", 'i')
+    referer = @socket.handshake.headers.referer
+    if referer.match re
+      channel = referer.replace re, "$1"
+      for name, screen of env.screens
+        return screen if name is channel
     null
 
   get_lead_member: (count) ->

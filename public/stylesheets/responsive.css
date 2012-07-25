@@ -1,0 +1,71 @@
+
+@media (max-width: 1919px) {
+
+  article > img {
+    width: 374px;
+  }
+
+  article > div {
+    margin-left: 400px;
+    font-size: 0.75em;
+  }
+
+  article > div .contact img {
+    width: 150px;
+    height: 150px;
+  }
+
+  section#guide {
+    font-size: 0.81em;
+  }
+
+}
+
+@media (max-width: 768px) {
+
+  article > img {
+    width: 174px;
+  }
+
+  article > div {
+    margin-left: 200px;
+    font-size: 0.36em;
+  }
+
+  article > div .when {
+    padding: 0 0.36em;
+  }
+
+  article > div .what,
+  article > div .where {
+    margin: 0.25em 0.25em 0 0;
+  }
+
+  article > div .what *,
+  article > div .where * {
+    padding: 0 0 0 0.36em;
+  }
+
+  article > div .about {
+    margin: 0 0.42em;
+    font-size: 3.3em;
+  }
+
+  article > div .extra-details * {
+    padding: 0 0 0 0.36em;
+  }
+
+  article > div .contact span {
+    padding: 0 0 0 0.36em;
+  }
+
+  article > div .contact img {
+    width: 75px;
+    height: 75px;
+  }
+
+  section#guide {
+    font-size: 0.36em;
+  }
+
+}

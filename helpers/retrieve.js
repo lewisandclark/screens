@@ -16,7 +16,7 @@
     }
     Retrieve['prototype'] = new events.EventEmitter;
     Retrieve.prototype.set_screen = function() {
-      var address, name, screen, _ref;
+      var address, channel, criteria, name, re, referer, screen, _ref, _ref2;
       address = this.socket.handshake.address.address;
       if (address === null) {
         return null;
@@ -26,6 +26,28 @@
         screen = _ref[name];
         if (screen['ip'] === address) {
           return screen;
+        }
+      }
+      re = new RegExp("^.*\\/channel\\/(" + (((function() {
+        var _ref2, _results;
+        _ref2 = env.channels;
+        _results = [];
+        for (channel in _ref2) {
+          criteria = _ref2[channel];
+          _results.push(channel);
+        }
+        return _results;
+      })()).join('|')) + ")$", 'i');
+      referer = this.socket.handshake.headers.referer;
+      if (referer.match(re)) {
+        channel = referer.replace(re, "$1");
+        _ref2 = env.screens;
+        for (name in _ref2) {
+          screen = _ref2[name];
+          console.log(name, channel);
+          if (name === channel) {
+            return screen;
+          }
         }
       }
       return null;
