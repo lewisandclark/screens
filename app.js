@@ -25,13 +25,7 @@
         }
       });
     } else {
-      return res.render('static/promo.jade', {
-        layout: 'layouts/simple.jade',
-        locals: {
-          title: 'Lewis & Clark Campus Display System',
-          buffer_size: env.buffer_size
-        }
-      });
+      return res.redirect('http://www.lclark.edu/support/displays/');
     }
   });
   app.get('/reload', function(req, res) {

@@ -22,8 +22,8 @@ app.get '/',
       # res.render 'static/empty.jade', { layout: 'layouts/simple.jade', locals: { title: 'Lewis & Clark Campus Display System' } }
       res.render 'signage/index.jade', { layout: 'layouts/signage.jade', locals: { title: 'Lewis & Clark Campus Display System', digital_ts: '10029244356' } }
     else
-      res.render 'static/promo.jade', { layout: 'layouts/simple.jade', locals: { title: 'Lewis & Clark Campus Display System', buffer_size: env.buffer_size } }
-
+      # res.render 'static/promo.jade', { layout: 'layouts/simple.jade', locals: { title: 'Lewis & Clark Campus Display System', buffer_size: env.buffer_size } }
+      res.redirect 'http://www.lclark.edu/support/displays/'
 app.get '/reload',
   (req, res) ->
     io.sockets.volatile.emit 'reload'
